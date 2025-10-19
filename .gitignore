@@ -1,0 +1,39 @@
+# Java
+*.class
+*.jar
+*.war
+*.ear
+target/
+*.iml
+.idea/
+.mvn/
+
+# Spring Boot
+*.log
+application-local.yml
+
+# Node.js
+node_modules/
+dist/
+.npm
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+
+# IDE
+.vscode/
+.DS_Store
+
+# Database
+*.db
+*.sqlite
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
