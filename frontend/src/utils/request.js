@@ -4,6 +4,8 @@ import router from '@/router'
 
 // 创建axios实例
 const request = axios.create({
+  // 开发环境使用相对路径，配合Vite代理解决CORS
+  baseURL: import.meta.env.DEV ? '' : (import.meta.env.VITE_API_BASE_URL || ''),
   timeout: 10000
 })
 

@@ -1,22 +1,73 @@
 <template>
   <div class="devices">
-    <el-card>
+    <el-card class="devices-card">
       <template #header>
         <div class="card-header">
-          <span>设备列表</span>
-          <el-button type="primary" size="small" @click="refreshDevices">
-            <el-icon><Refresh /></el-icon> 刷新
+          <span class="header-title">设备列表</span>
+          <el-button type="primary" size="small" @click="refreshDevices" class="refresh-btn">
+            <el-icon><Refresh /></el-icon>
+            <span class="btn-text">刷新</span>
           </el-button>
         </div>
       </template>
 
-      <el-table :data="deviceList" border style="width: 100%">
+      <!-- 移动端卡片视图 -->
+      <div class="mobile-device-list" v-if="isMobile">
+        <div 
+          v-for="device in deviceList" 
+          :key="device.deviceId" 
+          class="device-card-mobile"
+          @click="viewDevice(device)"
+        >
+          <div class="device-header">
+            <div class="device-info">
+              <h4 class="device-name">{{ device.deviceName }}</h4>
+              <p class="device-id">{{ device.deviceId }}</p>
+            </div>
+            <div class="device-status">
+              <el-tag
+                :type="device.status === 'ONLINE' ? 'success' : device.status === 'FAULT' ? 'danger' : 'info'"
+                size="small"
+              >
+                {{ getStatusText(device.status) }}
+              </el-tag>
+            </div>
+          </div>
+          <div class="device-details">
+            <div class="detail-item">
+              <span class="label">类型:</span>
+              <el-tag :type="device.deviceType === 'SENSOR' ? 'success' : 'warning'" size="small">
+                {{ device.deviceType === 'SENSOR' ? '传感器' : '执行器' }}
+              </el-tag>
+            </div>
+            <div class="detail-item">
+              <span class="label">位置:</span>
+              <span class="value">{{ device.location }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="label">最后在线:</span>
+              <span class="value">{{ formatTime(device.lastOnlineTime) }}</span>
+            </div>
+          </div>
+          <div class="device-actions">
+            <el-button size="small" type="primary" @click.stop="viewDevice(device)">
+              详情
+            </el-button>
+            <el-button size="small" type="success" @click.stop="controlDevice(device)">
+              控制
+            </el-button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 桌面端表格视图 -->
+      <el-table :data="deviceList" border style="width: 100%" v-else class="devices-table">
         <el-table-column prop="deviceId" label="设备编号" width="150" />
         <el-table-column prop="deviceName" label="设备名称" width="180" />
         <el-table-column prop="deviceType" label="设备类型" width="120">
           <template #default="{ row }">
             <el-tag :type="row.deviceType === 'SENSOR' ? 'success' : 'warning'" size="small">
-              {{ row.deviceType === 'SENSOR' ? '传感器' : '执行器' }}
+              {{ row.deviceType === '传感器' ? '传感器' : '执行器' }}
             </el-tag>
           </template>
         </el-table-column>
@@ -50,9 +101,15 @@
     </el-card>
 
     <!-- 设备详情对话框 -->
-    <el-dialog v-model="detailVisible" title="设备详情" width="60%">
-      <div v-if="selectedDevice">
-        <el-descriptions :column="2" border>
+    <el-dialog 
+      v-model="detailVisible" 
+      title="设备详情" 
+      :width="isMobile ? '95%' : '60%'"
+      :fullscreen="isMobile"
+      class="device-detail-dialog"
+    >
+      <div v-if="selectedDevice" class="device-detail-content">
+        <el-descriptions :column="isMobile ? 1 : 2" border class="device-descriptions">
           <el-descriptions-item label="设备编号">
             {{ selectedDevice.deviceId }}
           </el-descriptions-item>
@@ -73,7 +130,7 @@
           <el-descriptions-item label="固件版本">
             {{ selectedDevice.firmwareVersion || '--' }}
           </el-descriptions-item>
-          <el-descriptions-item label="描述" :span="2">
+          <el-descriptions-item label="描述" :span="isMobile ? 1 : 2">
             {{ selectedDevice.description || '--' }}
           </el-descriptions-item>
         </el-descriptions>
@@ -83,8 +140,8 @@
         <div v-if="deviceSensorData" class="sensor-data-grid">
           <el-card class="data-item">
             <div class="data-content">
-              <el-icon :size="30" color="#409EFF"><Sunny /></el-icon>
-              <div>
+              <el-icon :size="isMobile ? 24 : 30" color="#409EFF"><Sunny /></el-icon>
+              <div class="data-info">
                 <div class="data-label">光照强度</div>
                 <div class="data-value">{{ deviceSensorData.light || '--' }} lux</div>
               </div>
@@ -93,8 +150,8 @@
 
           <el-card class="data-item">
             <div class="data-content">
-              <el-icon :size="30" color="#F56C6C"><Orange /></el-icon>
-              <div>
+              <el-icon :size="isMobile ? 24 : 30" color="#F56C6C"><Orange /></el-icon>
+              <div class="data-info">
                 <div class="data-label">温度</div>
                 <div class="data-value">{{ deviceSensorData.temperature || '--' }} ℃</div>
               </div>
@@ -103,8 +160,8 @@
 
           <el-card class="data-item">
             <div class="data-content">
-              <el-icon :size="30" color="#67C23A"><Coffee /></el-icon>
-              <div>
+              <el-icon :size="isMobile ? 24 : 30" color="#67C23A"><Coffee /></el-icon>
+              <div class="data-info">
                 <div class="data-label">湿度</div>
                 <div class="data-value">{{ deviceSensorData.humidity || '--' }} %</div>
               </div>
@@ -113,42 +170,16 @@
 
           <el-card class="data-item">
             <div class="data-content">
-              <el-icon :size="30" :color="deviceSensorData.flame ? '#F56C6C' : '#67C23A'">
+              <el-icon :size="isMobile ? 24 : 30" :color="deviceSensorData.flame ? '#F56C6C' : '#909399'">
                 <Warning />
               </el-icon>
-              <div>
+              <div class="data-info">
                 <div class="data-label">火焰检测</div>
                 <div class="data-value">
-                  <el-tag :type="deviceSensorData.flame ? 'danger' : 'success'">
+                  <el-tag :type="deviceSensorData.flame ? 'danger' : 'success'" size="small">
                     {{ deviceSensorData.flame ? '检测到火焰' : '正常' }}
                   </el-tag>
                 </div>
-              </div>
-            </div>
-          </el-card>
-
-          <el-card class="data-item">
-            <div class="data-content">
-              <el-icon :size="30" :color="deviceSensorData.rgbStatus ? '#E6A23C' : '#909399'">
-                <Sunrise />
-              </el-icon>
-              <div>
-                <div class="data-label">RGB灯</div>
-                <div class="data-value">
-                  <el-tag :type="deviceSensorData.rgbStatus ? 'warning' : 'info'">
-                    {{ deviceSensorData.rgbStatus ? '开启' : '关闭' }}
-                  </el-tag>
-                </div>
-              </div>
-            </div>
-          </el-card>
-
-          <el-card class="data-item">
-            <div class="data-content">
-              <el-icon :size="30" color="#909399"><Clock /></el-icon>
-              <div>
-                <div class="data-label">更新时间</div>
-                <div class="data-value small">{{ formatTime(deviceSensorData.dataTime) }}</div>
               </div>
             </div>
           </el-card>
@@ -158,45 +189,61 @@
     </el-dialog>
 
     <!-- 设备控制对话框 -->
-    <el-dialog v-model="controlVisible" title="设备控制" width="40%">
-      <div v-if="selectedDevice">
-        <el-form label-width="100px">
-          <el-form-item label="设备编号">
-            <el-input v-model="selectedDevice.deviceId" disabled />
-          </el-form-item>
-          <el-form-item label="控制命令">
-            <el-select v-model="controlCommand" placeholder="请选择控制命令" style="width: 100%">
-              <el-option label="开启RGB灯" value="rgb_on" />
-              <el-option label="关闭RGB灯" value="rgb_off" />
-              <el-option label="开启蜂鸣器" value="buzzer_on" />
-              <el-option label="关闭蜂鸣器" value="buzzer_off" />
-              <el-option label="开启加湿器" value="humidifier_on" />
-              <el-option label="关闭加湿器" value="humidifier_off" />
-              <el-option label="空调制热" value="ac_heat" />
-              <el-option label="空调制冷" value="ac_cool" />
-              <el-option label="关闭空调" value="ac_off" />
-            </el-select>
-          </el-form-item>
-        </el-form>
+    <el-dialog 
+      v-model="controlVisible" 
+      title="设备控制" 
+      :width="isMobile ? '95%' : '50%'"
+      class="device-control-dialog"
+    >
+      <div v-if="selectedDevice" class="control-content">
+        <el-alert
+          title="设备控制"
+          :description="`正在控制设备: ${selectedDevice.deviceName} (${selectedDevice.deviceId})`"
+          type="info"
+          show-icon
+          :closable="false"
+          class="control-alert"
+        />
+
+        <div class="control-panel">
+          <div class="control-item">
+            <label class="control-label">RGB灯光控制</label>
+            <div class="control-actions">
+              <el-button 
+                type="success" 
+                @click="controlRGB(true)"
+                :loading="controlLoading"
+                size="default"
+              >
+                开启
+              </el-button>
+              <el-button 
+                type="danger" 
+                @click="controlRGB(false)"
+                :loading="controlLoading"
+                size="default"
+              >
+                关闭
+              </el-button>
+            </div>
+          </div>
+        </div>
       </div>
-      <template #footer>
-        <el-button @click="controlVisible = false">取消</el-button>
-        <el-button type="primary" @click="sendControlCommand" :loading="sending">
-          发送命令
-        </el-button>
-      </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import {
   Refresh, Sunny, Orange, Coffee,
   Warning, Sunrise, Clock
 } from '@element-plus/icons-vue'
 import { getDeviceList, getLatestSensorData, controlDevice as controlDeviceApi } from '@/api/device'
+
+// 移动端检测
+const isMobile = ref(false)
 
 // 设备列表
 const deviceList = ref([])
@@ -210,6 +257,17 @@ const deviceSensorData = ref(null)
 const controlVisible = ref(false)
 const controlCommand = ref('')
 const sending = ref(false)
+const controlLoading = ref(false)
+
+// 检测移动端
+const checkMobile = () => {
+  isMobile.value = window.innerWidth <= 768
+}
+
+// 监听窗口大小变化
+const handleResize = () => {
+  checkMobile()
+}
 
 // 加载设备列表
 const loadDevices = async () => {
@@ -283,6 +341,29 @@ const sendControlCommand = async () => {
   }
 }
 
+// RGB控制功能
+const controlRGB = async (isOn) => {
+  controlLoading.value = true
+  try {
+    const res = await controlDeviceApi({
+      deviceId: selectedDevice.value.deviceId,
+      action: isOn ? 'rgb_on' : 'rgb_off'
+    })
+
+    if (res.code === 200) {
+      ElMessage.success(res.message || `RGB灯已${isOn ? '开启' : '关闭'}`)
+      controlVisible.value = false
+    } else {
+      ElMessage.error(res.message || '控制失败')
+    }
+  } catch (error) {
+    console.error('RGB控制失败:', error)
+    ElMessage.error('控制失败')
+  } finally {
+    controlLoading.value = false
+  }
+}
+
 // 格式化时间
 const formatTime = (time) => {
   if (!time) return '--'
@@ -302,62 +383,333 @@ const getStatusText = (status) => {
 
 onMounted(() => {
   loadDevices()
+  checkMobile()
+  window.addEventListener('resize', handleResize)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
 })
 </script>
 
 <style scoped>
 .devices {
-  padding: 20px;
+  padding: 0;
+}
+
+.devices-card {
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
 }
 
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.header-title {
+  font-weight: 600;
+  color: #333;
+}
+
+.refresh-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.btn-text {
+  display: inline;
+}
+
+/* 移动端设备卡片 */
+.mobile-device-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.device-card-mobile {
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
+  padding: 15px;
+  background: #fff;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.device-card-mobile:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.device-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.device-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.device-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 5px 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.device-id {
+  font-size: 13px;
+  color: #666;
+  margin: 0;
+  font-family: 'Courier New', monospace;
+}
+
+.device-status {
+  flex-shrink: 0;
+  margin-left: 10px;
+}
+
+.device-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 15px;
+}
+
+.detail-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.detail-item .label {
+  color: #666;
+  font-weight: 500;
+  min-width: 60px;
+}
+
+.detail-item .value {
+  color: #333;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.device-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+/* 桌面端表格 */
+.devices-table {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* 对话框样式 */
+.device-detail-dialog .el-dialog__body {
+  padding: 20px;
+}
+
+.device-detail-content {
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.device-descriptions {
+  margin-bottom: 20px;
 }
 
 .sensor-data-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 15px;
-  margin-top: 15px;
 }
 
 .data-item {
-  cursor: default;
+  border-radius: 8px;
+  transition: transform 0.2s ease;
+}
+
+.data-item:hover {
+  transform: translateY(-2px);
 }
 
 .data-content {
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 12px;
+}
+
+.data-info {
+  flex: 1;
+  min-width: 0;
 }
 
 .data-label {
-  font-size: 14px;
-  color: #606266;
+  font-size: 13px;
+  color: #666;
   margin-bottom: 5px;
 }
 
 .data-value {
-  font-size: 20px;
-  font-weight: bold;
-  color: #303133;
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
 }
 
-.data-value.small {
-  font-size: 14px;
+.control-content {
+  padding: 10px 0;
 }
 
-@media (max-width: 1200px) {
+.control-alert {
+  margin-bottom: 20px;
+}
+
+.control-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.control-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
+  background: #fafafa;
+}
+
+.control-label {
+  font-weight: 500;
+  color: #333;
+}
+
+.control-actions {
+  display: flex;
+  gap: 10px;
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  .card-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 15px;
+  }
+  
+  .refresh-btn .btn-text {
+    display: none;
+  }
+  
   .sensor-data-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  
+  .data-content {
+    gap: 10px;
+  }
+  
+  .data-value {
+    font-size: 16px;
+  }
+  
+  .control-item {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 15px;
+    text-align: center;
+  }
+  
+  .control-actions {
+    justify-content: center;
+  }
+  
+  .device-detail-dialog .el-dialog__body {
+    padding: 15px;
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 480px) {
+  .device-card-mobile {
+    padding: 12px;
+  }
+  
+  .device-name {
+    font-size: 15px;
+  }
+  
+  .device-id {
+    font-size: 12px;
+  }
+  
+  .detail-item {
+    font-size: 12px;
+  }
+  
+  .detail-item .label {
+    min-width: 50px;
+  }
+  
+  .device-actions {
+    gap: 8px;
+  }
+  
+  .device-actions .el-button {
+    padding: 5px 10px;
+    font-size: 12px;
+  }
+  
   .sensor-data-grid {
-    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  
+  .data-content {
+    gap: 8px;
+  }
+  
+  .data-label {
+    font-size: 12px;
+  }
+  
+  .data-value {
+    font-size: 14px;
+  }
+  
+  .control-item {
+    padding: 12px;
+  }
+  
+  .device-detail-dialog .el-dialog__body {
+    padding: 10px;
+  }
+}
+
+/* 横屏适配 */
+@media (max-width: 768px) and (orientation: landscape) {
+  .sensor-data-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .device-detail-content {
+    max-height: 60vh;
   }
 }
 </style>

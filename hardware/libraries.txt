@@ -1,0 +1,63 @@
+# W601智慧办公楼系统 - Arduino库依赖
+
+## 必需库文件
+
+### 1. PubSubClient
+- **作者**: Nick O'Leary
+- **版本**: 2.8.0 或更高
+- **用途**: MQTT客户端通信
+- **安装方法**: 库管理器搜索 "PubSubClient"
+
+### 2. ArduinoJson
+- **作者**: Benoit Blanchon
+- **版本**: 6.19.0 或更高
+- **用途**: JSON数据解析和生成
+- **安装方法**: 库管理器搜索 "ArduinoJson"
+
+### 3. DHT sensor library
+- **作者**: Adafruit
+- **版本**: 1.4.0 或更高
+- **用途**: DHT22温湿度传感器驱动
+- **安装方法**: 库管理器搜索 "DHT sensor library"
+- **依赖**: Adafruit Unified Sensor
+
+### 4. Adafruit Unified Sensor
+- **作者**: Adafruit
+- **版本**: 1.1.0 或更高
+- **用途**: DHT库的依赖库
+- **安装方法**: 库管理器搜索 "Adafruit Unified Sensor"
+
+## 内置库（无需安装）
+
+### 1. WiFi
+- **说明**: W601开发板内置WiFi库
+- **用途**: WiFi网络连接
+
+### 2. Arduino Core Libraries
+- **说明**: Arduino核心库
+- **包含**: String, Serial, millis() 等基础功能
+
+## 安装步骤
+
+1. 打开Arduino IDE
+2. 进入 **工具 → 管理库**
+3. 搜索并安装上述必需库文件
+4. 确保所有依赖库都已正确安装
+
+## 版本兼容性
+
+- Arduino IDE: 1.8.0+
+- W600 Arduino Package: 0.2.4+
+- ESP32 Arduino Core: 如果使用ESP32替代方案
+
+## 故障排查
+
+### 库安装失败
+1. 检查网络连接
+2. 尝试手动下载库文件
+3. 重启Arduino IDE
+
+### 编译错误
+1. 确认所有依赖库都已安装
+2. 检查库版本兼容性
+3. 清理并重新编译项目

@@ -4,12 +4,14 @@
       <template #header>
         <div class="card-header">
           <span>用户管理</span>
-          <div>
+          <div class="header-actions">
             <el-button type="primary" size="small" @click="showAddDialog">
-              <el-icon><Plus /></el-icon> 添加用户
+              <el-icon><Plus /></el-icon>
+              <span class="button-text">添加用户</span>
             </el-button>
             <el-button type="primary" size="small" @click="refreshUsers">
-              <el-icon><Refresh /></el-icon> 刷新
+              <el-icon><Refresh /></el-icon>
+              <span class="button-text">刷新</span>
             </el-button>
           </div>
         </div>
@@ -18,28 +20,34 @@
       <!-- 筛选条件 -->
       <el-form :inline="true" :model="queryForm" class="query-form">
         <el-form-item label="用户名">
-          <el-input v-model="queryForm.username" placeholder="请输入用户名" clearable style="width: 200px" />
+          <el-input v-model="queryForm.username" placeholder="请输入用户名" clearable />
         </el-form-item>
         <el-form-item label="角色">
-          <el-select v-model="queryForm.role" placeholder="全部" clearable style="width: 150px">
+          <el-select v-model="queryForm.role" placeholder="全部" clearable>
             <el-option label="管理员" value="ADMIN" />
             <el-option label="普通用户" value="USER" />
           </el-select>
         </el-form-item>
         <el-form-item label="状态">
-          <el-select v-model="queryForm.status" placeholder="全部" clearable style="width: 150px">
+          <el-select v-model="queryForm.status" placeholder="全部" clearable>
             <el-option label="启用" value="ACTIVE" />
             <el-option label="禁用" value="DISABLED" />
           </el-select>
         </el-form-item>
-        <el-form-item>
+        <el-form-item class="query-actions">
           <el-button type="primary" @click="handleQuery">查询</el-button>
           <el-button @click="handleReset">重置</el-button>
         </el-form-item>
       </el-form>
 
-      <!-- 用户列表 -->
-      <el-table :data="userList" border style="width: 100%">
+      <!-- 用户列表 - 桌面端表格 -->
+      <el-table 
+        v-if="!isMobile" 
+        :data="userList" 
+        border 
+        style="width: 100%"
+        class="desktop-table"
+      >
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="username" label="用户名" width="150" />
         <el-table-column prop="realName" label="真实姓名" width="120" />
@@ -88,6 +96,62 @@
         </el-table-column>
       </el-table>
 
+      <!-- 用户列表 - 移动端卡片 -->
+      <div v-else class="mobile-user-list">
+        <div v-for="user in userList" :key="user.id" class="user-card">
+          <div class="user-header">
+            <div class="user-info">
+              <h4>{{ user.realName || user.username }}</h4>
+              <p class="username">@{{ user.username }}</p>
+            </div>
+            <div class="user-status">
+              <el-tag :type="user.role === 'ADMIN' ? 'danger' : 'primary'" size="small">
+                {{ user.role === 'ADMIN' ? '管理员' : '普通用户' }}
+              </el-tag>
+              <el-tag :type="user.status === 'ACTIVE' ? 'success' : 'danger'" size="small">
+                {{ user.status === 'ACTIVE' ? '启用' : '禁用' }}
+              </el-tag>
+            </div>
+          </div>
+          
+          <div class="user-details">
+            <div class="detail-item">
+              <span class="label">邮箱:</span>
+              <span class="value">{{ user.email || '--' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="label">手机:</span>
+              <span class="value">{{ user.phone || '--' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="label">创建时间:</span>
+              <span class="value">{{ formatTime(user.createTime) }}</span>
+            </div>
+          </div>
+          
+          <div class="user-actions">
+            <el-button size="small" type="primary" @click="editUser(user)">
+              编辑
+            </el-button>
+            <el-button
+              size="small"
+              :type="user.status === 'ACTIVE' ? 'warning' : 'success'"
+              @click="toggleUserStatus(user)"
+            >
+              {{ user.status === 'ACTIVE' ? '禁用' : '启用' }}
+            </el-button>
+            <el-button
+              size="small"
+              type="danger"
+              @click="deleteUser(user)"
+              :disabled="user.username === 'admin'"
+            >
+              删除
+            </el-button>
+          </div>
+        </div>
+      </div>
+
       <!-- 分页 -->
       <div class="pagination-container">
         <el-pagination
@@ -95,7 +159,8 @@
           v-model:page-size="pagination.size"
           :page-sizes="[10, 20, 50, 100]"
           :total="pagination.total"
-          layout="total, sizes, prev, pager, next, jumper"
+          :layout="isMobile ? 'prev, pager, next' : 'total, sizes, prev, pager, next, jumper'"
+          :small="isMobile"
           @size-change="handleSizeChange"
           @current-change="handleCurrentChange"
         />
@@ -106,7 +171,8 @@
     <el-dialog
       v-model="dialogVisible"
       :title="isEdit ? '编辑用户' : '添加用户'"
-      width="500px"
+      :width="isMobile ? '95%' : '500px'"
+      :fullscreen="isMobile"
       @close="resetForm"
     >
       <el-form :model="userForm" :rules="rules" ref="userFormRef" label-width="80px">
@@ -149,10 +215,23 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Refresh } from '@element-plus/icons-vue'
 import { getUserList, addUser, updateUser, deleteUser as deleteUserApi, toggleUserStatus as toggleUserStatusApi } from '@/api/user'
+
+// 移动端检测
+const isMobile = ref(false)
+
+// 检测是否为移动端
+const checkMobile = () => {
+  isMobile.value = window.innerWidth <= 768
+}
+
+// 窗口大小改变处理
+const handleResize = () => {
+  checkMobile()
+}
 
 // 用户列表
 const userList = ref([])
@@ -224,15 +303,19 @@ const loadUsers = async () => {
       ...queryForm
     }
     const res = await getUserList(params)
-    if (res.success) {
-      userList.value = res.data.records || res.data.list || []
+    if (res.code === 200 && res.data) {
+      // 确保userList始终是数组
+      const userData = res.data.records || res.data.list || res.data || []
+      userList.value = Array.isArray(userData) ? userData : []
       pagination.total = res.data.total || 0
     } else {
-      ElMessage.error('获取用户列表失败')
+      userList.value = []
+      ElMessage.error(res.message || '获取用户列表失败')
     }
   } catch (error) {
     console.error('获取用户列表失败:', error)
-    ElMessage.error('获取用户列表失败')
+    userList.value = []
+    ElMessage.error('获取用户列表失败: ' + (error.message || error))
   }
 }
 
@@ -395,6 +478,12 @@ const formatTime = (time) => {
 // 初始化
 onMounted(() => {
   loadUsers()
+  checkMobile()
+  window.addEventListener('resize', handleResize)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
 })
 </script>
 
@@ -409,6 +498,11 @@ onMounted(() => {
   align-items: center;
 }
 
+.header-actions {
+  display: flex;
+  gap: 8px;
+}
+
 .query-form {
   margin-bottom: 20px;
   padding: 20px;
@@ -419,5 +513,183 @@ onMounted(() => {
 .pagination-container {
   margin-top: 20px;
   text-align: right;
+}
+
+/* 移动端用户卡片样式 */
+.mobile-user-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.user-card {
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
+  padding: 16px;
+  background: #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.user-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.user-info h4 {
+  margin: 0 0 4px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.user-info .username {
+  margin: 0;
+  font-size: 14px;
+  color: #909399;
+}
+
+.user-status {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-end;
+}
+
+.user-details {
+  margin-bottom: 16px;
+}
+
+.detail-item {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.detail-item .label {
+  color: #606266;
+  font-weight: 500;
+}
+
+.detail-item .value {
+  color: #303133;
+  text-align: right;
+  flex: 1;
+  margin-left: 16px;
+}
+
+.user-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.user-actions .el-button {
+  flex: 1;
+  min-width: 60px;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .users {
+    padding: 10px;
+  }
+  
+  .card-header {
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+  }
+  
+  .header-actions {
+    justify-content: center;
+  }
+  
+  .header-actions .button-text {
+    display: none;
+  }
+  
+  .query-form {
+    padding: 16px;
+  }
+  
+  .query-form .el-form-item {
+    margin-bottom: 16px;
+    width: 100%;
+  }
+  
+  .query-form .el-input,
+  .query-form .el-select {
+    width: 100% !important;
+  }
+  
+  .query-actions {
+    text-align: center;
+  }
+  
+  .query-actions .el-button {
+    width: 100px;
+  }
+  
+  .pagination-container {
+    text-align: center;
+    margin-top: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .users {
+    padding: 8px;
+  }
+  
+  .user-card {
+    padding: 12px;
+  }
+  
+  .user-header {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .user-status {
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+  }
+  
+  .user-actions .el-button {
+    font-size: 12px;
+    padding: 4px 8px;
+  }
+  
+  .detail-item {
+    flex-direction: column;
+    gap: 4px;
+  }
+  
+  .detail-item .value {
+    text-align: left;
+    margin-left: 0;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+  .user-card {
+    padding: 8px;
+  }
+  
+  .user-header {
+    margin-bottom: 8px;
+  }
+  
+  .user-details {
+    margin-bottom: 8px;
+  }
+  
+  .detail-item {
+    margin-bottom: 4px;
+  }
 }
 </style>

@@ -163,4 +163,176 @@ public class UserService {
             return new java.util.ArrayList<>();
         }
     }
+
+    /**
+     * 分页获取用户列表
+     */
+    public Map<String, Object> getUserListWithPagination(Integer pageNum, Integer pageSize, String username, String role) {
+        try {
+            // 构建查询条件
+            LambdaQueryWrapper<UserInfo> queryWrapper = new LambdaQueryWrapper<>();
+            if (username != null && !username.trim().isEmpty()) {
+                queryWrapper.like(UserInfo::getUsername, username.trim());
+            }
+            if (role != null && !role.trim().isEmpty()) {
+                queryWrapper.eq(UserInfo::getRole, role.trim());
+            }
+            
+            // 计算总数
+            Long total = userInfoMapper.selectCount(queryWrapper);
+            
+            // 分页查询
+            int offset = (pageNum - 1) * pageSize;
+            queryWrapper.last("LIMIT " + offset + ", " + pageSize);
+            java.util.List<UserInfo> users = userInfoMapper.selectList(queryWrapper);
+            
+            // 清除所有密码
+            users.forEach(user -> user.setPassword(null));
+            
+            Map<String, Object> result = new HashMap<>();
+            result.put("list", users);
+            result.put("total", total);
+            result.put("pageNum", pageNum);
+            result.put("pageSize", pageSize);
+            
+            return result;
+        } catch (Exception e) {
+            log.error("分页获取用户列表失败", e);
+            Map<String, Object> result = new HashMap<>();
+            result.put("list", new java.util.ArrayList<>());
+            result.put("total", 0L);
+            result.put("pageNum", pageNum);
+            result.put("pageSize", pageSize);
+            return result;
+        }
+    }
+
+    /**
+     * 添加用户
+     */
+    public boolean addUser(UserInfo userInfo) {
+        try {
+            // 检查用户名是否已存在
+            UserInfo existUser = userInfoMapper.selectOne(
+                    new LambdaQueryWrapper<UserInfo>()
+                            .eq(UserInfo::getUsername, userInfo.getUsername())
+            );
+            if (existUser != null) {
+                log.warn("用户名已存在: {}", userInfo.getUsername());
+                return false;
+            }
+            
+            // 设置默认值
+            userInfo.setCreateTime(LocalDateTime.now());
+            userInfo.setUpdateTime(LocalDateTime.now());
+            if (userInfo.getStatus() == null) {
+                userInfo.setStatus(1); // 默认启用
+            }
+            if (userInfo.getRole() == null || userInfo.getRole().trim().isEmpty()) {
+                userInfo.setRole("USER"); // 默认普通用户
+            }
+            
+            int result = userInfoMapper.insert(userInfo);
+            log.info("添加用户成功: {}", userInfo.getUsername());
+            return result > 0;
+        } catch (Exception e) {
+            log.error("添加用户失败", e);
+            return false;
+        }
+    }
+
+    /**
+     * 更新用户信息
+     */
+    public boolean updateUser(Long id, UserInfo userInfo) {
+        try {
+            // 检查用户是否存在
+            UserInfo existUser = userInfoMapper.selectById(id);
+            if (existUser == null) {
+                log.warn("用户不存在: {}", id);
+                return false;
+            }
+            
+            // 如果更新用户名，检查是否重复
+            if (userInfo.getUsername() != null && !userInfo.getUsername().equals(existUser.getUsername())) {
+                UserInfo duplicateUser = userInfoMapper.selectOne(
+                        new LambdaQueryWrapper<UserInfo>()
+                                .eq(UserInfo::getUsername, userInfo.getUsername())
+                                .ne(UserInfo::getId, id)
+                );
+                if (duplicateUser != null) {
+                    log.warn("用户名已存在: {}", userInfo.getUsername());
+                    return false;
+                }
+            }
+            
+            // 设置更新时间和ID
+            userInfo.setId(id);
+            userInfo.setUpdateTime(LocalDateTime.now());
+            
+            int result = userInfoMapper.updateById(userInfo);
+            log.info("更新用户成功: {}", id);
+            return result > 0;
+        } catch (Exception e) {
+            log.error("更新用户失败", e);
+            return false;
+        }
+    }
+
+    /**
+     * 删除用户
+     */
+    public boolean deleteUser(Long id) {
+        try {
+            // 检查用户是否存在
+            UserInfo existUser = userInfoMapper.selectById(id);
+            if (existUser == null) {
+                log.warn("用户不存在: {}", id);
+                return false;
+            }
+            
+            // 不能删除管理员账户
+            if ("ADMIN".equals(existUser.getRole())) {
+                log.warn("不能删除管理员账户: {}", id);
+                return false;
+            }
+            
+            int result = userInfoMapper.deleteById(id);
+            log.info("删除用户成功: {}", id);
+            return result > 0;
+        } catch (Exception e) {
+            log.error("删除用户失败", e);
+            return false;
+        }
+    }
+
+    /**
+     * 切换用户状态
+     */
+    public boolean toggleUserStatus(Long id) {
+        try {
+            UserInfo user = userInfoMapper.selectById(id);
+            if (user == null) {
+                log.warn("用户不存在: {}", id);
+                return false;
+            }
+            
+            // 不能禁用管理员账户
+            if ("ADMIN".equals(user.getRole()) && user.getStatus() == 1) {
+                log.warn("不能禁用管理员账户: {}", id);
+                return false;
+            }
+            
+            // 切换状态
+            user.setStatus(user.getStatus() == 1 ? 0 : 1);
+            user.setUpdateTime(LocalDateTime.now());
+            
+            int result = userInfoMapper.updateById(user);
+            log.info("切换用户状态成功: {} -> {}", id, user.getStatus());
+            return result > 0;
+        } catch (Exception e) {
+            log.error("切换用户状态失败", e);
+            return false;
+        }
+    }
 }

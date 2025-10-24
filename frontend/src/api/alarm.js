@@ -43,3 +43,19 @@ export function getLatestAlarms(limit = 10) {
     params: { limit }
   })
 }
+
+// 删除告警
+export function deleteAlarm(id) {
+  return request({
+    url: `/api/alarm/${id}`,
+    method: 'delete'
+  })
+}
+
+// 清空所有告警
+export function clearAllAlarms() {
+  return request({
+    url: '/api/alarm/clear',
+    method: 'delete'
+  })
+}
