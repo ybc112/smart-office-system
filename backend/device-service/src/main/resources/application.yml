@@ -29,7 +29,7 @@ spring:
   redis:
     host: localhost
     port: 6379
-    password: redis123
+    # password: redis123  # 本机Redis无密码，注释掉
     database: 0
     timeout: 3000ms
     lettuce:
@@ -54,7 +54,7 @@ mybatis-plus:
 
 # MQTT配置
 mqtt:
-  broker-url: tcp://localhost:1883
+  broker-url: tcp://192.168.8.75:1883
   client-id: device-service-${random.value}
   username:
   password:
