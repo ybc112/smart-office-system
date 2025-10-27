@@ -54,7 +54,7 @@ mybatis-plus:
 
 # MQTT配置
 mqtt:
-  broker-url: tcp://192.168.8.75:1883
+  broker-url: tcp://localhost:1883
   client-id: device-service-${random.value}
   username:
   password:

@@ -2,15 +2,15 @@
 # Adjust these values before deploying to the board
 
 # WiFi settings
-WIFI_SSID = "iQOO 13"
-WIFI_PASSWORD = "01234567890"
+WIFI_SSID = "Nakiri Ayame"
+WIFI_PASSWORD = "88888888"
 
 # Device identity
 # Deprecated: use MQTT_CLIENT_ID for device identity
 
 # MQTT settings
 # MQTT服务器配置
-MQTT_SERVER = "192.168.8.75"  # 主机局域网IP，连接到运行后端服务的电脑
+MQTT_SERVER = "192.168.43.198"  # 主机局域网IP，连接到运行后端服务的电脑
 MQTT_PORT = 1883
 MQTT_CLIENT_ID = "W601_001"
 MQTT_USERNAME = ""  # EMQX默认无需认证
@@ -25,11 +25,13 @@ TOPIC_SENSOR_DATA = "office/sensor/data"
 TOPIC_CONTROL_CMD = "office/control/cmd"
 TOPIC_ALARM = "office/alarm"
 TOPIC_DEVICE_STATUS = "office/device/status"
+TOPIC_CONFIG_UPDATE = "office/config/update"
 # MicroPython侧使用字节主题（派生自字符串）
 SENSOR_DATA_TOPIC = TOPIC_SENSOR_DATA.encode()
 CONTROL_TOPIC = TOPIC_CONTROL_CMD.encode()
 ALARM_TOPIC = TOPIC_ALARM.encode()
 DEVICE_STATUS_TOPIC = TOPIC_DEVICE_STATUS.encode()
+CONFIG_UPDATE_TOPIC = TOPIC_CONFIG_UPDATE.encode()
 
 # GPIO pin mapping (W601 IoT Board)
 FLAME_SENSOR_PIN = 65  # PB10
@@ -52,7 +54,7 @@ LIGHT_OFF_LUX = 350
 # Timing settings (milliseconds)
 LIGHTING_PERIOD_MS = 5000
 ENVIRONMENT_PERIOD_MS = 10000
-FIRE_ALARM_PERIOD_MS = 1000
+FIRE_ALARM_PERIOD_MS = 200  # 改为200毫秒，更快响应火焰检测
 HEARTBEAT_PERIOD_MS = 30000
 SENSOR_REPORT_PERIOD_MS = 10000  # 改为10秒，更频繁地发送数据
 

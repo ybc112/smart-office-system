@@ -24,4 +24,9 @@ public class MqttTopicConstants {
      * 设备状态主题
      */
     public static final String TOPIC_DEVICE_STATUS = "office/device/status";
+
+    /**
+     * 配置更新主题
+     */
+    public static final String TOPIC_CONFIG_UPDATE = "office/config/update";
 }

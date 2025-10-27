@@ -14,7 +14,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 设备管理Controller
@@ -93,7 +95,24 @@ public class DeviceController {
                             .orderByDesc(SensorData::getDataTime)
                             .last("LIMIT 1")
             );
-            return Result.success(sensorData);
+            
+            if (sensorData != null) {
+                // 转换为前端期望的格式，添加timestamp字段
+                Map<String, Object> result = new HashMap<>();
+                result.put("deviceId", sensorData.getDeviceId());
+                result.put("light", sensorData.getLight());
+                result.put("temperature", sensorData.getTemperature());
+                result.put("humidity", sensorData.getHumidity());
+                result.put("flame", sensorData.getFlame() != null && sensorData.getFlame() == 1);
+                result.put("rgbStatus", sensorData.getRgbStatus() != null && sensorData.getRgbStatus() == 1);
+                // 将dataTime转换为timestamp（毫秒）
+                if (sensorData.getDataTime() != null) {
+                    result.put("timestamp", sensorData.getDataTime().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli());
+                }
+                return Result.success(result);
+            }
+            
+            return Result.success(null);
         } catch (Exception e) {
             log.error("获取最新传感器数据失败", e);
             return Result.fail("获取最新传感器数据失败");
@@ -137,6 +156,87 @@ public class DeviceController {
         } catch (Exception e) {
             log.error("设备控制失败", e);
             return Result.fail("设备控制失败");
+        }
+    }
+
+    /**
+     * 添加设备
+     */
+    @PostMapping("/add")
+    public Result<String> addDevice(@RequestBody DeviceInfo deviceInfo) {
+        try {
+            log.info("[后端] 添加设备请求: {}", deviceInfo.getDeviceName());
+            
+            // 检查设备ID是否已存在
+            DeviceInfo existing = deviceInfoMapper.selectOne(
+                    new LambdaQueryWrapper<DeviceInfo>()
+                            .eq(DeviceInfo::getDeviceId, deviceInfo.getDeviceId())
+            );
+            
+            if (existing != null) {
+                return Result.fail("设备ID已存在");
+            }
+            
+            // 设置默认值
+            if (deviceInfo.getOnlineStatus() == null) {
+                deviceInfo.setOnlineStatus(0);
+            }
+            if (deviceInfo.getStatus() == null) {
+                deviceInfo.setStatus("OFFLINE");
+            }
+            
+            deviceInfoMapper.insert(deviceInfo);
+            log.info("[后端] 设备添加成功: {}", deviceInfo.getDeviceName());
+            
+            return Result.success("设备添加成功");
+        } catch (Exception e) {
+            log.error("[后端] 设备添加失败", e);
+            return Result.fail("设备添加失败");
+        }
+    }
+
+    /**
+     * 更新设备
+     */
+    @PutMapping("/update")
+    public Result<String> updateDevice(@RequestBody DeviceInfo deviceInfo) {
+        try {
+            log.info("[后端] 更新设备请求: {}", deviceInfo.getDeviceName());
+            
+            deviceInfoMapper.updateById(deviceInfo);
+            log.info("[后端] 设备更新成功: {}", deviceInfo.getDeviceName());
+            
+            return Result.success("设备更新成功");
+        } catch (Exception e) {
+            log.error("[后端] 设备更新失败", e);
+            return Result.fail("设备更新失败");
+        }
+    }
+
+    /**
+     * 删除设备
+     */
+    @DeleteMapping("/{deviceId}")
+    public Result<String> deleteDevice(@PathVariable String deviceId) {
+        try {
+            log.info("[后端] 删除设备请求: deviceId={}", deviceId);
+            
+            DeviceInfo device = deviceInfoMapper.selectOne(
+                    new LambdaQueryWrapper<DeviceInfo>()
+                            .eq(DeviceInfo::getDeviceId, deviceId)
+            );
+            
+            if (device == null) {
+                return Result.fail("设备不存在");
+            }
+            
+            deviceInfoMapper.deleteById(device.getId());
+            log.info("[后端] 设备删除成功: {}", device.getDeviceName());
+            
+            return Result.success("设备删除成功");
+        } catch (Exception e) {
+            log.error("[后端] 设备删除失败", e);
+            return Result.fail("设备删除失败");
         }
     }
 

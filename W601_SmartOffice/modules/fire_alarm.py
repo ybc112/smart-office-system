@@ -38,11 +38,15 @@ class FireAlarmModule:
                 print("FireAlarm read error:", e)
             return
         if flame:
-            # Local warning: blink red
-            self.led.blink_red(times=1, interval_ms=150)
+            # 立即响应：闪烁红灯并触发蜂鸣器
+            self.led.blink_red(times=3, interval_ms=100)  # 更快更明显的警告
+            if DEBUG:
+                print("🚨 火焰检测到！立即响应")
         if flame != self.last_flame:
             self.last_flame = flame
             self._publish_alarm(flame)
+            if flame and DEBUG:
+                print("🔥 火焰告警已发送到服务器")
 
     def update(self, now_ms=None):
         now = now_ms if now_ms is not None else time.ticks_ms()

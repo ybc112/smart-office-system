@@ -273,14 +273,17 @@ const handleResize = () => {
 const loadDevices = async () => {
   try {
     const res = await getDeviceList()
-    if (res.code === 200 && res.data) {
-      deviceList.value = res.data
+    if (res && res.code === 200) {
+      // Ensure deviceList is always an array to satisfy ElTable
+      deviceList.value = Array.isArray(res.data) ? res.data : []
     } else {
-      ElMessage.error(res.message || '获取设备列表失败')
+      deviceList.value = []
+      ElMessage.error(res?.message || '获取设备列表失败')
     }
   } catch (error) {
     console.error('获取设备列表失败:', error)
     ElMessage.error('获取设备列表失败')
+    deviceList.value = []
   }
 }
 

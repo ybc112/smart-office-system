@@ -8,12 +8,13 @@ from config import (
 
 
 class SensorReporterModule:
-    def __init__(self, light_sensor, env_sensor, flame_sensor, rgb_led, mqtt):
+    def __init__(self, light_sensor, env_sensor, flame_sensor, rgb_led, mqtt, config_handler=None):
         self.light = light_sensor
         self.env = env_sensor
         self.flame = flame_sensor
         self.led = rgb_led
         self.mqtt = mqtt
+        self.config_handler = config_handler
         self.last_run = 0
 
     def _read_light(self):
@@ -74,6 +75,12 @@ class SensorReporterModule:
 
     def update(self, now_ms=None):
         now = now_ms if now_ms is not None else time.ticks_ms()
-        if time.ticks_diff(now, self.last_run) >= SENSOR_REPORT_PERIOD_MS:
+        
+        # 获取动态配置的上报间隔
+        report_interval = SENSOR_REPORT_PERIOD_MS
+        if self.config_handler:
+            report_interval = self.config_handler.get_data_collect_interval()
+        
+        if time.ticks_diff(now, self.last_run) >= report_interval:
             self.last_run = now
             self.publish()

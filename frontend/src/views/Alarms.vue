@@ -23,7 +23,7 @@
           v-for="alarm in alarmList" 
           :key="alarm.id" 
           class="alarm-card-mobile"
-          :class="getAlarmCardClass(alarm.level)"
+          :class="getAlarmCardClass(alarm.alarmLevel)"
         >
           <div class="alarm-header">
             <div class="alarm-info">
@@ -31,13 +31,13 @@
               <p class="alarm-device">{{ alarm.deviceId }}</p>
             </div>
             <div class="alarm-level">
-              <el-tag :type="getAlarmTagType(alarm.level)" size="small">
-                {{ getAlarmLevelText(alarm.level) }}
+              <el-tag :type="getAlarmTagType(alarm.alarmLevel)" size="small">
+                {{ getAlarmLevelText(alarm.alarmLevel) }}
               </el-tag>
             </div>
           </div>
           <div class="alarm-content">
-            <p class="alarm-message">{{ alarm.message }}</p>
+            <p class="alarm-message">{{ alarm.alarmMessage }}</p>
             <div class="alarm-meta">
               <div class="meta-item">
                 <el-icon><Clock /></el-icon>
@@ -72,11 +72,11 @@
         <el-table-column prop="id" label="告警ID" width="80" />
         <el-table-column prop="alarmType" label="告警类型" width="120" />
         <el-table-column prop="deviceId" label="设备编号" width="150" />
-        <el-table-column prop="message" label="告警信息" min-width="200" />
-        <el-table-column prop="level" label="告警级别" width="100">
+        <el-table-column prop="alarmMessage" label="告警信息" min-width="200" />
+        <el-table-column prop="alarmLevel" label="告警级别" width="100">
           <template #default="{ row }">
-            <el-tag :type="getAlarmTagType(row.level)" size="small">
-              {{ getAlarmLevelText(row.level) }}
+            <el-tag :type="getAlarmTagType(row.alarmLevel)" size="small">
+              {{ getAlarmLevelText(row.alarmLevel) }}
             </el-tag>
           </template>
         </el-table-column>
@@ -160,7 +160,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh, Delete, Clock, Location } from '@element-plus/icons-vue'
 import { getAlarmList, handleAlarm as handleAlarmApi, deleteAlarm as deleteAlarmApi, clearAllAlarms as clearAllAlarmsApi } from '@/api/alarm'
@@ -170,6 +170,22 @@ const isMobile = ref(false)
 
 // 告警列表
 const alarmList = ref([])
+
+// 查询表单
+const queryForm = reactive({
+  alarmType: '',
+  level: '',
+  status: '',
+  startTime: '',
+  endTime: ''
+})
+
+// 分页
+const pagination = reactive({
+  current: 1,
+  size: 10,
+  total: 0
+})
 
 // 处理告警对话框
 const handleVisible = ref(false)
@@ -193,14 +209,27 @@ const handleResize = () => {
 // 加载告警列表
 const loadAlarms = async () => {
   try {
-    const res = await getAlarmList()
-    if (res && res.code === 200) {
-      alarmList.value = res.data || []
+    const params = {
+      pageNum: pagination.current,
+      pageSize: pagination.size,
+      ...queryForm
+    }
+    const res = await getAlarmList(params)
+    if (res && res.code === 200 && res.data) {
+      // 确保alarmList始终是数组 - 多层防御
+      let alarmData = res.data.records || res.data.list || res.data || []
+      if (!Array.isArray(alarmData)) {
+        alarmData = []
+      }
+      alarmList.value = alarmData
+      pagination.total = (res.data && res.data.total) || 0
     } else {
-      ElMessage.error(res?.message || '获取告警列表失败')
+      alarmList.value = []
+      ElMessage.error((res && res.message) || '获取告警列表失败')
     }
   } catch (error) {
     console.error('获取告警列表失败:', error)
+    alarmList.value = []
     ElMessage.error('获取告警列表失败')
   }
 }
@@ -254,11 +283,11 @@ const confirmHandle = async () => {
 
   handling.value = true
   try {
-    const res = await handleAlarmApi({
-      id: selectedAlarm.value.id,
-      handleType: handleForm.value.handleType,
-      remark: handleForm.value.remark
-    })
+    const res = await handleAlarmApi(
+      selectedAlarm.value.id,
+      'HANDLED',
+      handleForm.value.remark
+    )
 
     if (res && res.code === 200) {
       ElMessage.success('处理成功')

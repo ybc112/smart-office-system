@@ -303,14 +303,21 @@ const loadUsers = async () => {
       ...queryForm
     }
     const res = await getUserList(params)
-    if (res.code === 200 && res.data) {
-      // 确保userList始终是数组
-      const userData = res.data.records || res.data.list || res.data || []
-      userList.value = Array.isArray(userData) ? userData : []
-      pagination.total = res.data.total || 0
+    if (res && res.code === 200 && res.data) {
+      // 确保userList始终是数组 - 多层防御
+      let userData = res.data.records || res.data.list || res.data || []
+      if (!Array.isArray(userData)) {
+        userData = []
+      }
+      // 转换后端数字状态为前端字符串状态
+      userList.value = userData.map(user => ({
+        ...user,
+        status: user.status === 1 ? 'ACTIVE' : 'DISABLED'  // 转换状态：1 -> ACTIVE, 0 -> DISABLED
+      }))
+      pagination.total = (res.data && res.data.total) || 0
     } else {
       userList.value = []
-      ElMessage.error(res.message || '获取用户列表失败')
+      ElMessage.error((res && res.message) || '获取用户列表失败')
     }
   } catch (error) {
     console.error('获取用户列表失败:', error)
@@ -370,7 +377,7 @@ const editUser = (user) => {
     email: user.email,
     phone: user.phone,
     role: user.role,
-    status: user.status,
+    status: user.status,  // 这里已经是字符串状态了（ACTIVE/DISABLED）
     password: ''
   })
   dialogVisible.value = true
@@ -383,14 +390,20 @@ const saveUser = async () => {
 
   saving.value = true
   try {
+    // 准备提交的数据，将前端的字符串状态转换为后端需要的数字状态
+    const submitData = {
+      ...userForm,
+      status: userForm.status === 'ACTIVE' ? 1 : 0  // 转换状态：ACTIVE -> 1, DISABLED -> 0
+    }
+    
     let res
     if (isEdit.value) {
-      res = await updateUser(userForm.id, userForm)
+      res = await updateUser(submitData.id, submitData)
     } else {
-      res = await addUser(userForm)
+      res = await addUser(submitData)
     }
 
-    if (res.success) {
+    if (res.code === 200) {
       ElMessage.success(isEdit.value ? '更新成功' : '添加成功')
       dialogVisible.value = false
       loadUsers()
@@ -416,15 +429,15 @@ const toggleUserStatus = async (user) => {
     })
 
     const res = await toggleUserStatusApi(user.id)
-    if (res.success) {
+    if (res.code === 200) {
       ElMessage.success(`${action}成功`)
       loadUsers()
     } else {
-      ElMessage.error(`${action}失败`)
+      ElMessage.error(res.message || `${action}失败`)
     }
   } catch (error) {
     if (error !== 'cancel') {
-      console.error(`${action}用户失败:`, error)
+      console.error('切换用户状态失败:', error)
       ElMessage.error(`${action}失败`)
     }
   }
@@ -440,11 +453,11 @@ const deleteUser = async (user) => {
     })
 
     const res = await deleteUserApi(user.id)
-    if (res.success) {
+    if (res.code === 200) {
       ElMessage.success('删除成功')
       loadUsers()
     } else {
-      ElMessage.error('删除失败')
+      ElMessage.error(res.message || '删除失败')
     }
   } catch (error) {
     if (error !== 'cancel') {

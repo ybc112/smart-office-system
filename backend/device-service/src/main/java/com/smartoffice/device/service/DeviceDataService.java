@@ -47,7 +47,7 @@ public class DeviceDataService {
     @Autowired
     private SystemConfigMapper systemConfigMapper;
 
-    @Autowired
+    @Autowired(required = false)
     private MqttClient mqttClient;
 
     @Autowired(required = false)
@@ -218,6 +218,11 @@ public class DeviceDataService {
      */
     private void sendControlCommand(String deviceId, String action) {
         try {
+            if (mqttClient == null) {
+                log.warn("MQTT客户端未连接，无法发送控制命令: deviceId={}, action={}", deviceId, action);
+                return;
+            }
+            
             ControlCommandDTO command = new ControlCommandDTO(deviceId, action);
             String payload = JSON.toJSONString(command);
 
@@ -235,7 +240,9 @@ public class DeviceDataService {
      * 公开方法：供Controller调用发送设备命令
      */
     public void sendDeviceCommand(String deviceId, String action) {
+        log.info("[后端] 设备控制命令执行: 设备ID={}, 操作={}", deviceId, action);
         sendControlCommand(deviceId, action);
+        log.info("[后端] 设备控制命令已发送到MQTT: 设备ID={}, 操作={}", deviceId, action);
     }
 
     /**

@@ -150,7 +150,9 @@ VALUES
 ('mqtt.broker.url', 'tcp://localhost:1883', 'SYSTEM', 'MQTT服务器地址'),
 ('mqtt.client.id', 'smart-office-server', 'SYSTEM', 'MQTT客户端ID'),
 ('alarm.email.enable', 'false', 'SYSTEM', '邮件告警开关'),
-('alarm.sms.enable', 'false', 'SYSTEM', '短信告警开关');
+('alarm.sms.enable', 'false', 'SYSTEM', '短信告警开关'),
+('data.collect.interval', '5', 'SYSTEM', '数据采集间隔（秒）'),
+('data.retention.days', '30', 'SYSTEM', '数据保留天数');
 
 -- ====================================
 -- 7. 操作日志表

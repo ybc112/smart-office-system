@@ -41,3 +41,29 @@ export function controlDevice(data) {
     data
   })
 }
+
+// 添加设备
+export function addDevice(data) {
+  return request({
+    url: '/api/device/add',
+    method: 'post',
+    data
+  })
+}
+
+// 更新设备
+export function updateDevice(data) {
+  return request({
+    url: '/api/device/update',
+    method: 'put',
+    data
+  })
+}
+
+// 删除设备
+export function deleteDevice(deviceId) {
+  return request({
+    url: `/api/device/${deviceId}`,
+    method: 'delete'
+  })
+}

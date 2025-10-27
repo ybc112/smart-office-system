@@ -43,6 +43,12 @@ const routes = [
         name: 'Users',
         component: () => import('@/views/Users.vue'),
         meta: { title: '用户管理', icon: 'User', requiresAdmin: true }
+      },
+      {
+        path: 'device-management',
+        name: 'DeviceManagement',
+        component: () => import('@/views/DeviceManagement.vue'),
+        meta: { title: '设备管理', icon: 'Tools' }
       }
     ]
   }

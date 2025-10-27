@@ -234,24 +234,33 @@ const loadLatestData = async () => {
 const loadAlarmData = async () => {
   try {
     const res = await getAlarmList({ pageNum: 1, pageSize: 5 })
-    if (res.code === 200 && res.data) {
-      recentAlarms.value = res.data.records || []
+    if (res && res.code === 200 && res.data) {
+      // 确保recentAlarms始终是数组 - 多层防御
+      let alarmData = res.data.records || res.data.list || res.data || []
+      if (!Array.isArray(alarmData)) {
+        alarmData = []
+      }
+      recentAlarms.value = alarmData
 
       // 统计未处理告警
       const allAlarmsRes = await getAlarmList({ pageNum: 1, pageSize: 1000 })
-      if (allAlarmsRes.code === 200 && allAlarmsRes.data) {
-        const alarms = allAlarmsRes.data.records || []
-        alarmStats.value.unhandled = alarms.filter(a => a.status === 'UNHANDLED').length
+      if (allAlarmsRes && allAlarmsRes.code === 200 && allAlarmsRes.data) {
+        let allAlarms = allAlarmsRes.data.records || allAlarmsRes.data.list || allAlarmsRes.data || []
+        if (!Array.isArray(allAlarms)) {
+          allAlarms = []
+        }
+        alarmStats.value.unhandled = allAlarms.filter(a => a.status === 'UNHANDLED').length
 
         // 统计今日告警
         const today = new Date().toISOString().split('T')[0]
-        alarmStats.value.today = alarms.filter(a =>
+        alarmStats.value.today = allAlarms.filter(a =>
           a.alarmTime && a.alarmTime.startsWith(today)
         ).length
       }
     }
   } catch (error) {
     console.error('获取告警数据失败:', error)
+    recentAlarms.value = []
   }
 }
 

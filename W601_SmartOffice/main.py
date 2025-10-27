@@ -23,6 +23,7 @@ from devices.buzzer import Buzzer
 from modules.fire_alarm import FireAlarmModule
 from modules.heartbeat import HeartbeatModule
 from modules.reporter import SensorReporterModule
+from modules.config_handler import ConfigHandlerModule
 
 
 def setup_i2c():
@@ -82,6 +83,9 @@ def main():
 
     mqtt = MqttClient()
 
+    # 创建配置处理模块
+    config_handler = ConfigHandlerModule(mqtt)
+
     def on_message(topic, msg):
         try:
             cmd = ujson.loads(msg)
@@ -105,13 +109,16 @@ def main():
         print("MQTT connected to", mqtt.server)
         mqtt.subscribe(CONTROL_TOPIC)
         print("MQTT subscribed to", CONTROL_TOPIC)
+        
+        # 订阅配置更新主题
+        config_handler.subscribe_config_updates()
     else:
         print("MQTT connection failed")
 
     # Modules
     fire_alarm = FireAlarmModule(flame, led, mqtt)
     heartbeat = HeartbeatModule(wifi, mqtt)
-    reporter = SensorReporterModule(light, aht, flame, led, mqtt)
+    reporter = SensorReporterModule(light, aht, flame, led, mqtt, config_handler)
 
     # Main loop
     while True:

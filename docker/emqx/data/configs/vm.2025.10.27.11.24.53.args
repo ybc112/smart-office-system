@@ -139,5 +139,5 @@
 +Q 1048576
 +P 2097152
 -setcookie emqxsecretcookie
--name smart-office@127.0.0.1
--mnesia dir '"/opt/emqx/data/mnesia/smart-office@127.0.0.1"'
+-name smart-office@0.0.0.0
+-mnesia dir '"/opt/emqx/data/mnesia/smart-office@0.0.0.0"'

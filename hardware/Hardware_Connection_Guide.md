@@ -4,6 +4,8 @@
 
 本指南详细说明W601开发板与各传感器和执行器的连接方法，以及固件烧录步骤。即使没有硬件基础，也能按照本指南完成硬件搭建。
 
+> **重要提示**: 本项目已提供完整的MicroPython代码，位于 `W601_SmartOffice/` 目录下，可直接烧录使用。
+
 ## 🎯 硬件清单
 
 ### 主控板
@@ -453,6 +455,225 @@ for i in range(3):
                     USB连接电脑
 ```
 
+## 🚀 固件烧录与配置
+
+### 1. 准备工作
+
+#### 安装开发环境
+1. **下载Thonny IDE**
+   - 访问 https://thonny.org/
+   - 下载并安装最新版本
+
+2. **配置MicroPython**
+   - 连接W601到电脑
+   - 在Thonny中选择"MicroPython (generic)"解释器
+   - 配置正确的串口
+
+#### 获取项目代码
+项目提供了完整的MicroPython代码，位于 `W601_SmartOffice/` 目录：
+
+```
+W601_SmartOffice/
+├── main.py              # 主程序入口
+├── config.py            # 配置文件
+├── wifi_manager.py      # WiFi管理
+├── mqtt_client.py       # MQTT客户端
+├── pins.py              # 引脚定义
+├── sensors/             # 传感器模块
+│   ├── aht10.py         # 温湿度传感器
+│   ├── light_adc.py     # 光照传感器
+│   └── flame.py         # 火焰传感器
+├── devices/             # 设备控制
+│   ├── rgb_led.py       # RGB LED
+│   └── buzzer.py        # 蜂鸣器
+├── modules/             # 功能模块
+│   ├── environment.py   # 环境监控
+│   ├── fire_alarm.py    # 火灾报警
+│   ├── heartbeat.py     # 心跳检测
+│   └── reporter.py      # 数据上报
+└── umqtt/               # MQTT库
+    └── simple.py
+```
+
+### 2. 配置系统参数
+
+#### 编辑配置文件
+打开 `config.py` 文件，修改以下配置：
+
+```python
+# WiFi配置
+WIFI_SSID = "你的WiFi名称"
+WIFI_PASSWORD = "你的WiFi密码"
+
+# MQTT配置
+MQTT_BROKER = "192.168.1.100"  # 修改为你的服务器IP地址
+MQTT_PORT = 1883
+DEVICE_ID = "W601_001"         # 设备唯一标识
+
+# 传感器阈值配置
+LIGHT_THRESHOLD = 300          # 光照阈值（低于此值开灯）
+TEMP_HIGH_THRESHOLD = 28       # 高温阈值
+TEMP_LOW_THRESHOLD = 18        # 低温阈值
+HUMIDITY_HIGH_THRESHOLD = 70   # 高湿度阈值
+HUMIDITY_LOW_THRESHOLD = 30    # 低湿度阈值
+
+# 数据上报间隔（秒）
+REPORT_INTERVAL = 30
+```
+
+#### 重要配置说明
+
+1. **WiFi配置**
+   - 确保WiFi名称和密码正确
+   - W601只支持2.4GHz WiFi网络
+   - 确保网络信号强度良好
+
+2. **MQTT配置**
+   - `MQTT_BROKER`: 运行后端服务的服务器IP地址
+   - 如果在同一台电脑上运行，可以使用局域网IP
+   - 确保防火墙允许1883端口通信
+
+3. **设备ID**
+   - 每个设备必须有唯一的ID
+   - 格式建议：`W601_001`, `W601_002` 等
+
+### 3. 上传代码到W601
+
+#### 使用Thonny IDE上传
+1. **连接设备**
+   ```
+   - 用USB线连接W601到电脑
+   - 打开Thonny IDE
+   - 选择正确的串口和解释器
+   ```
+
+2. **上传文件**
+   ```
+   - 在Thonny中打开项目文件
+   - 右键选择"Upload to /"
+   - 按照目录结构上传所有文件
+   ```
+
+3. **验证上传**
+   ```python
+   # 在Thonny的Shell中执行
+   import os
+   os.listdir('/')
+   # 应该看到所有上传的文件
+   ```
+
+#### 文件上传顺序
+建议按以下顺序上传：
+1. `umqtt/simple.py` (MQTT库)
+2. `config.py` (配置文件)
+3. `pins.py` (引脚定义)
+4. `sensors/` 目录下所有文件
+5. `devices/` 目录下所有文件
+6. `modules/` 目录下所有文件
+7. `wifi_manager.py`
+8. `mqtt_client.py`
+9. `main.py` (最后上传)
+
+### 4. 测试与验证
+
+#### 基础功能测试
+```python
+# 在Thonny Shell中测试各个模块
+
+# 测试WiFi连接
+from wifi_manager import WiFiManager
+wifi = WiFiManager()
+wifi.connect()
+
+# 测试传感器
+from sensors.aht10 import AHT10Sensor
+sensor = AHT10Sensor()
+temp, hum = sensor.read()
+print(f"温度: {temp}°C, 湿度: {hum}%")
+
+# 测试RGB LED
+from devices.rgb_led import RGBLed
+rgb = RGBLed()
+rgb.set_color(255, 0, 0)  # 红色
+```
+
+#### 完整系统测试
+```python
+# 运行主程序
+exec(open('main.py').read())
+
+# 观察输出，应该看到：
+# - WiFi连接成功
+# - MQTT连接成功
+# - 传感器数据读取
+# - 数据上报到服务器
+```
+
+### 5. 系统集成
+
+#### 后端配置检查
+确保后端服务的MQTT配置正确：
+```yaml
+# backend/device-service/src/main/resources/application.yml
+mqtt:
+  broker-url: tcp://192.168.1.100:1883  # 与W601配置一致
+  topics:
+    sensor-data: office/sensor/data
+    alarm: office/alarm
+    control: office/control/cmd
+```
+
+#### 数据流验证
+1. **启动后端服务**
+2. **启动W601设备**
+3. **检查后端日志**，应该看到：
+   ```
+   Received sensor data from W601_001
+   Processing temperature: 25.5°C
+   Processing humidity: 55.0%
+   ```
+4. **检查前端界面**，应该显示实时数据
+
+### 6. 故障排除
+
+#### WiFi连接问题
+```python
+# 检查WiFi状态
+import network
+wlan = network.WLAN(network.STA_IF)
+print("WiFi状态:", wlan.isconnected())
+print("IP地址:", wlan.ifconfig())
+```
+
+#### MQTT连接问题
+```python
+# 测试MQTT连接
+from mqtt_client import MQTTManager
+mqtt = MQTTManager()
+mqtt.connect()
+# 检查连接状态和错误信息
+```
+
+#### 传感器读取问题
+```python
+# 逐个测试传感器
+from sensors.aht10 import AHT10Sensor
+from sensors.light_adc import LightSensor
+from sensors.flame import FlameSensor
+
+# 测试温湿度传感器
+aht10 = AHT10Sensor()
+print("温湿度:", aht10.read())
+
+# 测试光照传感器
+light = LightSensor()
+print("光照:", light.read())
+
+# 测试火焰传感器
+flame = FlameSensor()
+print("火焰:", flame.read())
+```
+
 ## 🎯 下一步
 
 硬件连接完成后：
@@ -461,12 +682,17 @@ for i in range(3):
    - 使用提供的测试代码验证所有功能
    
 2. **部署智慧办公楼代码**
-   - 上传 `W601_SmartOffice_MicroPython.py`
+   - 上传 `W601_SmartOffice/` 目录下的所有文件
    - 配置WiFi和MQTT参数
 
 3. **系统集成测试**
    - 连接到后端系统
    - 验证数据传输功能
+   - 测试自动控制功能
+
+4. **查看完整运行指南**
+   - 参考 `项目完整运行指南.md`
+   - 了解整个系统的启动流程
 
 ---
 

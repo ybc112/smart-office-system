@@ -1,10 +1,13 @@
 package com.smartoffice.device.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.smartoffice.common.constants.MqttTopicConstants;
 import com.smartoffice.common.entity.SystemConfig;
 import com.smartoffice.common.vo.Result;
 import com.smartoffice.device.mapper.SystemConfigMapper;
 import lombok.extern.slf4j.Slf4j;
+import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.*;
@@ -27,6 +30,9 @@ public class SystemConfigController {
 
     @Autowired(required = false)
     private RedisTemplate<String, Object> redisTemplate;
+
+    @Autowired(required = false)
+    private MqttClient mqttClient;
 
     /**
      * 获取所有阈值配置
@@ -94,6 +100,12 @@ public class SystemConfigController {
                 }
 
                 log.info("更新配置: {}={}", config.getConfigKey(), config.getConfigValue());
+                
+                // 如果是数据采集间隔配置，推送到硬件设备
+                if ("data.collect.interval".equals(config.getConfigKey())) {
+                    pushConfigToDevices(config.getConfigKey(), config.getConfigValue());
+                }
+                
                 return Result.success("配置已更新");
             } else {
                 return Result.fail("配置项不存在");
@@ -153,6 +165,33 @@ public class SystemConfigController {
         } catch (Exception e) {
             log.error("获取系统配置失败", e);
             return Result.fail("获取系统配置失败");
+        }
+    }
+
+    /**
+     * 推送配置到硬件设备
+     */
+    private void pushConfigToDevices(String configKey, String configValue) {
+        if (mqttClient == null) {
+            log.warn("MQTT客户端未初始化，无法推送配置");
+            return;
+        }
+
+        try {
+            // 构建配置更新消息
+            Map<String, Object> configMessage = new HashMap<>();
+            configMessage.put("configKey", configKey);
+            configMessage.put("configValue", configValue);
+            configMessage.put("timestamp", System.currentTimeMillis());
+
+            String jsonMessage = new ObjectMapper().writeValueAsString(configMessage);
+
+            // 发布到配置更新主题
+            mqttClient.publish(MqttTopicConstants.TOPIC_CONFIG_UPDATE, jsonMessage.getBytes(), 1, false);
+            
+            log.info("配置已推送到硬件设备: {}={}", configKey, configValue);
+        } catch (Exception e) {
+            log.error("推送配置到硬件设备失败: {}", e.getMessage(), e);
         }
     }
 }

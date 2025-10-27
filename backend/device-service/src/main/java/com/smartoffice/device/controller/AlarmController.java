@@ -178,4 +178,44 @@ public class AlarmController {
             return Result.fail("获取最新告警失败");
         }
     }
+
+    /**
+     * 删除单个告警
+     */
+    @DeleteMapping("/{id}")
+    public Result<String> deleteAlarm(@PathVariable Long id) {
+        try {
+            AlarmLog alarm = alarmLogMapper.selectById(id);
+            if (alarm == null) {
+                return Result.fail("告警记录不存在");
+            }
+
+            int result = alarmLogMapper.deleteById(id);
+            if (result > 0) {
+                log.info("告警已删除: id={}", id);
+                return Result.success("删除成功");
+            } else {
+                return Result.fail("删除失败");
+            }
+        } catch (Exception e) {
+            log.error("删除告警失败: id={}", id, e);
+            return Result.fail("删除失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 清空所有告警
+     */
+    @DeleteMapping("/clear")
+    public Result<String> clearAllAlarms() {
+        try {
+            // 删除所有告警记录
+            int result = alarmLogMapper.delete(new LambdaQueryWrapper<>());
+            log.info("已清空所有告警, 共删除{}条记录", result);
+            return Result.success("已清空所有告警，共删除" + result + "条记录");
+        } catch (Exception e) {
+            log.error("清空告警失败", e);
+            return Result.fail("清空失败: " + e.getMessage());
+        }
+    }
 }

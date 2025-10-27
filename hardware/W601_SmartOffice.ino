@@ -33,6 +33,7 @@ const char* MQTT_CLIENT_ID = "W601_SmartOffice_001";
 const char* TOPIC_SENSOR_DATA = "office/sensor/data";
 const char* TOPIC_CONTROL_CMD = "office/control/cmd";
 const char* TOPIC_ALARM = "office/alarm";
+const char* TOPIC_CONFIG_UPDATE = "office/config/update";
 
 // 硬件引脚定义
 #define DHT_PIN 2           // 温湿度传感器引脚
@@ -45,7 +46,7 @@ const char* TOPIC_ALARM = "office/alarm";
 #define BUZZER_PIN 8        // 蜂鸣器引脚
 
 // 数据上报间隔（毫秒）
-const unsigned long REPORT_INTERVAL = 30000; // 30秒
+unsigned long reportInterval = 30000; // 默认30秒，可通过配置更新
 
 // ==================== 全局变量 ====================
 WiFiClient wifiClient;
@@ -98,7 +99,7 @@ void loop() {
     mqttClient.loop();
     
     // 定时上报传感器数据
-    if (millis() - lastReportTime >= REPORT_INTERVAL) {
+    if (millis() - lastReportTime >= reportInterval) {
         readSensors();
         publishSensorData();
         lastReportTime = millis();
@@ -251,6 +252,14 @@ void reconnectMQTT() {
             Serial.println("订阅主题失败!");
         }
         
+        // 订阅配置更新主题
+        if (mqttClient.subscribe(TOPIC_CONFIG_UPDATE, 1)) {
+            Serial.print("订阅配置主题成功: ");
+            Serial.println(TOPIC_CONFIG_UPDATE);
+        } else {
+            Serial.println("订阅配置主题失败!");
+        }
+        
         // 发送设备上线消息
         publishDeviceStatus("online");
         
@@ -314,6 +323,10 @@ void onMqttMessage(char* topic, byte* payload, unsigned int length) {
     if (String(topic) == TOPIC_CONTROL_CMD) {
         handleControlCommand(message);
     }
+    // 处理配置更新
+    else if (String(topic) == TOPIC_CONFIG_UPDATE) {
+        handleConfigUpdate(message);
+    }
 }
 
 // ==================== 处理控制命令 ====================
@@ -343,6 +356,30 @@ void handleControlCommand(String message) {
     } else if (action == "buzzer_off") {
         setBuzzerOff();
     }
+}
+
+// ==================== 处理配置更新 ====================
+void handleConfigUpdate(String message) {
+    // 解析JSON
+    DynamicJsonDocument doc(1024);
+    deserializeJson(doc, message);
+    
+    Serial.print("收到配置更新: ");
+    Serial.println(message);
+    
+    // 处理数据采集间隔配置
+    if (doc.containsKey("data.collect.interval")) {
+        int intervalSeconds = doc["data.collect.interval"];
+        reportInterval = intervalSeconds * 1000; // 转换为毫秒
+        
+        Serial.print("更新数据采集间隔: ");
+        Serial.print(intervalSeconds);
+        Serial.print("秒 (");
+        Serial.print(reportInterval);
+        Serial.println("毫秒)");
+    }
+    
+    // 可以在这里添加其他配置项的处理
 }
 
 // ==================== 传感器数据读取 ====================
@@ -499,25 +536,28 @@ void checkFlameAlarm() {
     
     if (flameDetected && !lastFlameState) {
         // 检测到火焰，立即响应
-        Serial.println("🚨 检测到火焰！触发告警");
+        Serial.println("🚨 检测到火焰！立即触发告警");
         
         // 立即开启蜂鸣器（本地紧急响应）
         setBuzzerOn();
         
         // 发送告警消息到服务器
-        publishAlarm("FIRE", "检测到火焰！立即疏散！");
+        publishAlarm("FIRE", "🚨 检测到火焰！立即疏散！");
         
-        // 可选：闪烁RGB灯作为视觉警告
-        for (int i = 0; i < 5; i++) {
+        // 立即闪烁RGB灯作为视觉警告（减少延时）
+        for (int i = 0; i < 3; i++) {
             setRGBColor(255, 0, 0); // 红色
-            delay(200);
+            delay(100);  // 减少延时，更快响应
             setRGBColor(0, 0, 0);   // 关闭
-            delay(200);
+            delay(100);  // 减少延时
         }
+        setRGBColor(255, 0, 0); // 保持红色警告状态
     } else if (!flameDetected && lastFlameState) {
         // 火焰消失，发送恢复消息
         Serial.println("✅ 火焰告警解除");
         publishAlarm("FIRE_CLEAR", "火焰告警已解除");
+        setBuzzerOff(); // 确保蜂鸣器关闭
+        setRGBColor(0, 0, 0); // 关闭RGB灯
     }
     
     lastFlameState = flameDetected;

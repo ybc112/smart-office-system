@@ -180,11 +180,12 @@ const configList = ref([])
 const loadConfig = async () => {
   try {
     const res = await getConfigList()
-    if (res.success && res.data) {
-      configList.value = res.data
+    if (res.code === 200 && res.data) {
+      // 确保configList是数组
+      configList.value = Array.isArray(res.data) ? res.data : []
 
       // 解析配置到表单
-      res.data.forEach(config => {
+      configList.value.forEach(config => {
         const key = config.configKey
         const value = config.configValue
 
@@ -204,10 +205,15 @@ const loadConfig = async () => {
         if (key === 'data.collect.interval') systemForm.dataCollectInterval = Number(value)
         if (key === 'data.retention.days') systemForm.dataRetentionDays = Number(value)
       })
+    } else {
+      // 如果没有数据或请求失败，初始化为空数组
+      configList.value = []
     }
   } catch (error) {
     console.error('加载配置失败:', error)
     ElMessage.error('加载配置失败')
+    // 出错时也要确保configList是数组
+    configList.value = []
   }
 }
 
@@ -242,20 +248,48 @@ const saveConfig = async () => {
       )
     }
 
+    console.log('准备保存的配置:', configs)
+
     // 批量更新配置
     const promises = configs.map(config => updateConfig(config))
     const results = await Promise.all(promises)
 
-    const allSuccess = results.every(res => res.success)
-    if (allSuccess) {
-      ElMessage.success('配置保存成功')
+    console.log('配置保存结果:', results)
+
+    // 详细分析结果
+    const successResults = []
+    const failedResults = []
+    
+    results.forEach((result, index) => {
+      const config = configs[index]
+      if (result.code === 200) {
+        successResults.push(config.configKey)
+      } else {
+        failedResults.push({
+          configKey: config.configKey,
+          error: result.message || '未知错误',
+          code: result.code
+        })
+        console.error(`配置保存失败: ${config.configKey}`, result)
+      }
+    })
+
+    if (failedResults.length === 0) {
+      ElMessage.success(`配置保存成功 (${successResults.length}项)`)
       loadConfig() // 重新加载配置
     } else {
-      ElMessage.error('部分配置保存失败')
+      const failedKeys = failedResults.map(item => item.configKey).join(', ')
+      console.error('失败的配置项:', failedResults)
+      ElMessage.error(`部分配置保存失败: ${failedKeys}`)
+      
+      // 如果有成功的配置，也要重新加载
+      if (successResults.length > 0) {
+        loadConfig()
+      }
     }
   } catch (error) {
     console.error('保存配置失败:', error)
-    ElMessage.error('保存配置失败')
+    ElMessage.error('保存配置失败: ' + (error.message || '未知错误'))
   } finally {
     saving.value = false
   }

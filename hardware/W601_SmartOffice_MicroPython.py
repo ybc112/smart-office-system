@@ -27,11 +27,12 @@ MQTT_CLIENT_ID = "W601_MicroPython_001"
 MQTT_USERNAME = ""
 MQTT_PASSWORD = ""
 
-# MQTT主题配置
+# MQTT主题定义
 TOPIC_SENSOR_DATA = "office/sensor/data"
 TOPIC_CONTROL_CMD = "office/control/cmd"
 TOPIC_ALARM = "office/alarm"
 TOPIC_STATUS = "office/device/status"
+TOPIC_CONFIG_UPDATE = "office/config/update"
 
 # 硬件引脚配置 (基于W601 IoT Board)
 PIN_DHT22_DATA = 0      # PA0 - 温湿度传感器数据引脚
@@ -59,6 +60,11 @@ sensor_data = {
     "humidity": 0.0,
     "light": 0.0,
     "flame": False
+}
+
+# 动态配置参数
+config_params = {
+    "data_collect_interval": 10000  # 默认10秒，单位毫秒
 }
 
 # 全局变量
@@ -211,6 +217,9 @@ def init_mqtt():
         # 订阅控制命令主题
         mqtt_client.subscribe(TOPIC_CONTROL_CMD)
         
+        # 订阅配置更新主题
+        mqtt_client.subscribe(TOPIC_CONFIG_UPDATE)
+        
         device_status["mqtt_connected"] = True
         print("[MQTT] ✅ MQTT连接成功")
         print(f"[MQTT] 📡 已订阅主题: {TOPIC_CONTROL_CMD}")
@@ -236,6 +245,8 @@ def on_mqtt_message(topic, msg):
         
         if topic_str == TOPIC_CONTROL_CMD:
             handle_control_command(msg_str)
+        elif topic_str == TOPIC_CONFIG_UPDATE:
+            handle_config_update(msg_str)
             
     except Exception as e:
         print(f"[MQTT] ❌ 处理消息失败: {e}")
@@ -451,17 +462,55 @@ def set_buzzer_off():
     device_status["buzzer_status"] = False
 
 # ==================== 自动控制逻辑 ====================
+def handle_config_update(msg_str):
+    """处理配置更新消息"""
+    try:
+        config_data = json.loads(msg_str)
+        print(f"[CONFIG] 📥 收到配置更新: {config_data}")
+        
+        # 处理数据采集间隔配置
+        if "data.collect.interval" in config_data:
+            interval_seconds = int(config_data["data.collect.interval"])
+            interval_ms = interval_seconds * 1000
+            config_params["data_collect_interval"] = interval_ms
+            print(f"[CONFIG] ✅ 更新数据采集间隔: {interval_seconds}秒 ({interval_ms}毫秒)")
+            
+            # 重新启动定时器以应用新的间隔
+            restart_timer()
+        
+        # 可以在这里添加其他配置项的处理
+        
+    except Exception as e:
+        print(f"[CONFIG] ❌ 配置更新处理异常: {e}")
+
+def restart_timer():
+    """重新启动定时器以应用新的配置"""
+    global system_timer
+    try:
+        if system_timer:
+            system_timer.deinit()
+            print("[TIMER] 🔄 停止旧定时器")
+        
+        # 使用新的间隔创建定时器
+        interval_ms = config_params["data_collect_interval"]
+        system_timer = Timer(0)
+        system_timer.init(period=interval_ms, mode=Timer.PERIODIC, callback=timer_callback)
+        print(f"[TIMER] ✅ 启动新定时器，间隔: {interval_ms}毫秒")
+        
+    except Exception as e:
+        print(f"[TIMER] ❌ 定时器重启异常: {e}")
+
 def check_flame_alarm():
-    """检查火焰告警"""
+    """检查火焰告警 - 优化为更快响应"""
     if sensor_data["flame"]:
         # 立即响应：开启蜂鸣器和红色RGB灯
         set_buzzer_on()
         set_rgb_color(1023, 0, 0)  # 红色告警
         
         # 发送告警消息
-        publish_alarm("FIRE", "HIGH", "检测到火焰，请立即处理！")
+        publish_alarm("FIRE", "CRITICAL", "🚨 检测到火焰！立即疏散！")
         
-        print("[ALARM] 🚨 火焰告警触发！")
+        print("[ALARM] 🚨 火焰告警触发！立即响应")
         return True
     else:
         # 火焰消失，关闭告警
@@ -558,12 +607,13 @@ def main():
         
         time.sleep(1)
         
-        # 4. 启动定时器 (30秒间隔)
+        # 4. 启动定时器 (使用配置的间隔)
+        interval_ms = config_params["data_collect_interval"]
         system_timer = Timer(0)
-        system_timer.init(period=30000, mode=Timer.PERIODIC, callback=timer_callback)
+        system_timer.init(period=interval_ms, mode=Timer.PERIODIC, callback=timer_callback)
         
         print("[MAIN] 🚀 系统启动完成，开始运行...")
-        print("[MAIN] 📊 数据上报间隔: 30秒")
+        print(f"[MAIN] 📊 数据上报间隔: {interval_ms/1000}秒")
         print("[MAIN] ⏸️ 按 Ctrl+C 停止程序")
         
         # 5. 主循环
