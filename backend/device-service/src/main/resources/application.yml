@@ -39,6 +39,23 @@ spring:
         min-idle: 0
         max-wait: -1ms
 
+  # 邮件配置
+  mail:
+    host: smtp.qq.com
+    port: 587
+    username: qpeesaupmqvuddei@qq.com
+    password: qpeesaupmqvuddei  # QQ邮箱授权码
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          ssl:
+            enable: false
+    default-encoding: UTF-8
+
 # MyBatis Plus配置
 mybatis-plus:
   mapper-locations: classpath*:mapper/**/*.xml

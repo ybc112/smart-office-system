@@ -42,6 +42,11 @@ public class SensorDataDTO implements Serializable {
     private Boolean rgbStatus;
 
     /**
+     * 蜂鸣器状态
+     */
+    private Boolean buzzerStatus;
+
+    /**
      * 时间戳
      */
     private Long timestamp;

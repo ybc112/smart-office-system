@@ -45,14 +45,10 @@ class LightADC:
         
         # Direct mapping from ADC value to lux
         # Assume ADC range 0-65535, map to 0-1000 lux
-        # Invert the mapping: higher ADC value = brighter light
+        # Higher ADC value = brighter light (normal photoresistor behavior)
         lux = (raw / 65535.0) * 1000.0
         
-        # Add some variation to avoid constant 1000 lux
-        # In real conditions, light varies between 100-800 lux typically
-        if lux > 900:
-            lux = 200 + (raw % 600)  # Vary between 200-800 lux
-        
+        # Ensure result is within valid range
         result = max(0, min(1000, int(lux)))
         print("[LightADC] Calculated lux: {}".format(result))
         return result

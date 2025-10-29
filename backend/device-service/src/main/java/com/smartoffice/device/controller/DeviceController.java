@@ -108,6 +108,9 @@ public class DeviceController {
                 // 将dataTime转换为timestamp（毫秒）
                 if (sensorData.getDataTime() != null) {
                     result.put("timestamp", sensorData.getDataTime().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli());
+                } else {
+                    // 如果dataTime为空，使用当前时间
+                    result.put("timestamp", System.currentTimeMillis());
                 }
                 return Result.success(result);
             }

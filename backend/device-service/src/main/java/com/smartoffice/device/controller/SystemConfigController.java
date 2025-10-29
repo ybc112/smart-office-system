@@ -178,10 +178,9 @@ public class SystemConfigController {
         }
 
         try {
-            // 构建配置更新消息
+            // 构建配置更新消息 - 硬件端期望直接使用configKey作为键名
             Map<String, Object> configMessage = new HashMap<>();
-            configMessage.put("configKey", configKey);
-            configMessage.put("configValue", configValue);
+            configMessage.put(configKey, configValue);
             configMessage.put("timestamp", System.currentTimeMillis());
 
             String jsonMessage = new ObjectMapper().writeValueAsString(configMessage);

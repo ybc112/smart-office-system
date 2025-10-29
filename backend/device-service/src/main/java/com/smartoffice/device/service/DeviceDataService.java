@@ -56,6 +56,9 @@ public class DeviceDataService {
     @Autowired(required = false)
     private SimpMessagingTemplate messagingTemplate;
 
+    @Autowired
+    private EmailService emailService;
+
     /**
      * 处理传感器数据
      */
@@ -72,12 +75,22 @@ public class DeviceDataService {
             sensorData.setDataTime(LocalDateTime.now());
             sensorDataMapper.insert(sensorData);
 
-            // 2. 缓存最新数据到Redis
+            // 2. 缓存最新数据到Redis（转换为前端期望的格式）
             if (redisTemplate != null) {
                 try {
+                    Map<String, Object> cacheData = new HashMap<>();
+                    cacheData.put("deviceId", sensorDataDTO.getDeviceId());
+                    cacheData.put("light", sensorDataDTO.getLight());
+                    cacheData.put("temperature", sensorDataDTO.getTemperature());
+                    cacheData.put("humidity", sensorDataDTO.getHumidity());
+                    cacheData.put("flame", sensorDataDTO.getFlame() != null && sensorDataDTO.getFlame());
+                    cacheData.put("rgbStatus", sensorDataDTO.getRgbStatus() != null && sensorDataDTO.getRgbStatus());
+                    // 使用当前时间作为timestamp（毫秒）
+                    cacheData.put("timestamp", System.currentTimeMillis());
+                    
                     redisTemplate.opsForValue().set(
                             "sensor:latest:" + sensorDataDTO.getDeviceId(),
-                            sensorDataDTO,
+                            cacheData,
                             24, TimeUnit.HOURS
                     );
                 } catch (Exception e) {
@@ -91,9 +104,21 @@ public class DeviceDataService {
             // 4. 检查并触发自动控制逻辑
             checkAndTriggerAutoControl(sensorDataDTO);
 
-            // 5. 通过WebSocket推送到前端
+            // 5. 通过WebSocket推送到前端（使用正确的时间戳）
             if (messagingTemplate != null) {
-                messagingTemplate.convertAndSend("/topic/sensor-data", sensorDataDTO);
+                // 创建一个新的DTO对象，使用正确的时间戳
+                SensorDataDTO pushData = new SensorDataDTO();
+                pushData.setDeviceId(sensorDataDTO.getDeviceId());
+                pushData.setLight(sensorDataDTO.getLight());
+                pushData.setTemperature(sensorDataDTO.getTemperature());
+                pushData.setHumidity(sensorDataDTO.getHumidity());
+                pushData.setFlame(sensorDataDTO.getFlame());
+                pushData.setRgbStatus(sensorDataDTO.getRgbStatus());
+                pushData.setBuzzerStatus(sensorDataDTO.getBuzzerStatus());
+                // 使用当前服务器时间作为时间戳
+                pushData.setTimestamp(System.currentTimeMillis());
+                
+                messagingTemplate.convertAndSend("/topic/sensor-data", pushData);
             }
 
             log.info("成功处理传感器数据: deviceId={}", sensorDataDTO.getDeviceId());
@@ -120,6 +145,24 @@ public class DeviceDataService {
             // 通过WebSocket推送告警到前端
             if (messagingTemplate != null) {
                 messagingTemplate.convertAndSend("/topic/alarm", alarmLog);
+            }
+
+            // 发送邮件通知
+            try {
+                // 这里可以配置管理员邮箱，暂时使用固定邮箱
+                String adminEmail = "qpeesaupmqvuddei@qq.com";
+                emailService.sendAlarmEmail(
+                    adminEmail,
+                    alarmMessageDTO.getDeviceId(),
+                    alarmMessageDTO.getAlarmType(),
+                    alarmMessageDTO.getMessage(),
+                    alarmMessageDTO.getLevel()
+                );
+                log.info("告警邮件通知已发送: deviceId={}, type={}", 
+                        alarmMessageDTO.getDeviceId(), alarmMessageDTO.getAlarmType());
+            } catch (Exception emailEx) {
+                log.error("发送告警邮件失败: deviceId={}, type={}", 
+                        alarmMessageDTO.getDeviceId(), alarmMessageDTO.getAlarmType(), emailEx);
             }
 
             log.info("成功处理告警消息: deviceId={}, type={}",
