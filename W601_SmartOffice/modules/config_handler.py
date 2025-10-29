@@ -43,7 +43,7 @@ class ConfigHandlerModule:
                 interval_ms = interval_seconds * 1000
                 self.config_params["data_collect_interval"] = interval_ms
                 if DEBUG:
-                    print(f"[CONFIG] 更新数据采集间隔: {interval_seconds}秒 ({interval_ms}毫秒)")
+                    print("[CONFIG] 更新数据采集间隔: {}秒 ({}毫秒)".format(interval_seconds, interval_ms))
             
             # 可以在这里添加其他配置项的处理
             
