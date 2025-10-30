@@ -49,8 +49,8 @@ public class MqttConfig {
 
             // 设置连接选项
             MqttConnectOptions options = new MqttConnectOptions();
-            // 为了保持订阅与会话，避免重连后丢失订阅，设置为 false
-            options.setCleanSession(false);
+            // 使用 clean session，避免旧离线会话中的残留消息导致首条消息异常
+            options.setCleanSession(true);
             options.setConnectionTimeout(mqttProperties.getTimeout());
             options.setKeepAliveInterval(mqttProperties.getKeepalive());
             options.setAutomaticReconnect(true);

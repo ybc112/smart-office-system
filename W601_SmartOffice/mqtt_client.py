@@ -105,7 +105,7 @@ class MqttClient:
 
     def publish_json(self, topic_bytes, obj):
         try:
-            payload = ujson.dumps(obj).encode()
+            payload = ujson.dumps(obj).encode('utf-8')
             self.publish(topic_bytes, payload)
         except Exception as e:
             if DEBUG:

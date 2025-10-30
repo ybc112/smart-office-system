@@ -5,18 +5,68 @@
         <div class="card-header">
           <span class="header-title">设备管理</span>
           <div class="header-actions">
-            <el-button type="primary" @click="showAddDialog" :icon="Plus">
-              添加设备
-            </el-button>
-            <el-button @click="refreshDevices" :icon="Refresh">
-              刷新
-            </el-button>
+            <!-- 筛选器 -->
+            <div class="filters">
+              <el-select 
+                v-model="selectedOfficeId" 
+                placeholder="选择办公室" 
+                clearable 
+                @change="onOfficeChange"
+                style="width: 150px"
+              >
+                <el-option 
+                  v-for="office in offices" 
+                  :key="office.id" 
+                  :label="office.officeName" 
+                  :value="office.id"
+                />
+              </el-select>
+              
+              <el-select 
+                v-model="selectedWorkAreaId" 
+                placeholder="选择办公区" 
+                clearable 
+                @change="filterDevices"
+                style="width: 150px"
+                :disabled="!selectedOfficeId"
+              >
+                <el-option 
+                  v-for="workArea in workAreas" 
+                  :key="workArea.id" 
+                  :label="workArea.areaName" 
+                  :value="workArea.id"
+                />
+              </el-select>
+              
+              <el-select 
+                v-model="selectedDeviceType" 
+                placeholder="设备类型" 
+                clearable 
+                @change="filterDevices"
+                style="width: 120px"
+              >
+                <el-option label="空调" value="AIR_CONDITIONER" />
+                <el-option label="加湿器" value="HUMIDIFIER" />
+                <el-option label="灯光" value="LIGHT" />
+                <el-option label="传感器" value="SENSOR" />
+                <el-option label="其他" value="OTHER" />
+              </el-select>
+            </div>
+            
+            <div class="action-buttons">
+              <el-button type="primary" @click="showAddDialog" :icon="Plus">
+                添加设备
+              </el-button>
+              <el-button @click="refreshDevices" :icon="Refresh">
+                刷新
+              </el-button>
+            </div>
           </div>
         </div>
       </template>
 
       <!-- 设备列表 -->
-      <el-table :data="deviceList" border style="width: 100%" v-loading="loading">
+      <el-table :data="filteredDeviceList" border style="width: 100%" v-loading="loading">
         <el-table-column prop="deviceId" label="设备编号" width="150" />
         <el-table-column prop="deviceName" label="设备名称" width="150" />
         <el-table-column prop="deviceType" label="设备类型" width="120">
@@ -27,6 +77,16 @@
           </template>
         </el-table-column>
         <el-table-column prop="location" label="位置" width="150" />
+        <el-table-column label="办公室" width="120">
+          <template #default="{ row }">
+            {{ getOfficeName(row.officeId) }}
+          </template>
+        </el-table-column>
+        <el-table-column label="办公区" width="120">
+          <template #default="{ row }">
+            {{ getWorkAreaName(row.workAreaId) }}
+          </template>
+        </el-table-column>
         <el-table-column prop="status" label="状态" width="100">
           <template #default="{ row }">
             <el-tag :type="getStatusTag(row.status)" size="small">
@@ -73,6 +133,26 @@
             <el-option label="灯光" value="LIGHT" />
             <el-option label="传感器" value="SENSOR" />
             <el-option label="其他" value="OTHER" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="办公室" prop="officeId">
+          <el-select v-model="deviceForm.officeId" placeholder="请选择办公室" style="width: 100%" @change="onFormOfficeChange">
+            <el-option 
+              v-for="office in offices" 
+              :key="office.id" 
+              :label="office.officeName" 
+              :value="office.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="办公区" prop="workAreaId">
+          <el-select v-model="deviceForm.workAreaId" placeholder="请选择办公区" style="width: 100%" :disabled="!deviceForm.officeId">
+            <el-option 
+              v-for="workArea in formWorkAreas" 
+              :key="workArea.id" 
+              :label="workArea.areaName" 
+              :value="workArea.id"
+            />
           </el-select>
         </el-form-item>
         <el-form-item label="位置" prop="location">
@@ -162,14 +242,23 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Refresh } from '@element-plus/icons-vue'
 import { getDeviceList, controlDevice as controlDeviceApi, addDevice, updateDevice, deleteDevice } from '@/api/device'
+import axios from 'axios'
 
 // 设备列表
 const deviceList = ref([])
 const loading = ref(false)
+
+// 办公室和办公区数据
+const offices = ref([])
+const workAreas = ref([])
+const formWorkAreas = ref([])
+const selectedOfficeId = ref('')
+const selectedWorkAreaId = ref('')
+const selectedDeviceType = ref('')
 
 // 对话框状态
 const dialogVisible = ref(false)
@@ -186,6 +275,8 @@ const deviceForm = reactive({
   deviceId: '',
   deviceName: '',
   deviceType: '',
+  officeId: '',
+  workAreaId: '',
   location: '',
   status: 'ONLINE',
   description: ''
@@ -205,12 +296,101 @@ const deviceRules = {
   deviceType: [
     { required: true, message: '请选择设备类型', trigger: 'change' }
   ],
+  officeId: [
+    { required: true, message: '请选择办公室', trigger: 'change' }
+  ],
+  workAreaId: [
+    { required: true, message: '请选择办公区', trigger: 'change' }
+  ],
   location: [
     { required: true, message: '请输入设备位置', trigger: 'blur' }
   ],
   status: [
     { required: true, message: '请选择设备状态', trigger: 'change' }
   ]
+}
+
+// 计算属性 - 过滤后的设备列表
+const filteredDeviceList = computed(() => {
+  let filtered = deviceList.value
+
+  if (selectedOfficeId.value) {
+    filtered = filtered.filter(device => device.officeId === selectedOfficeId.value)
+  }
+
+  if (selectedWorkAreaId.value) {
+    filtered = filtered.filter(device => device.workAreaId === selectedWorkAreaId.value)
+  }
+
+  if (selectedDeviceType.value) {
+    filtered = filtered.filter(device => device.deviceType === selectedDeviceType.value)
+  }
+
+  return filtered
+})
+
+// 加载办公室列表
+const loadOffices = async () => {
+  try {
+    const response = await axios.get('http://localhost:8080/api/offices')
+    if (response.data.code === 200) {
+      offices.value = response.data.data || []
+    }
+  } catch (error) {
+    console.error('加载办公室列表失败:', error)
+  }
+}
+
+// 加载办公区列表
+const loadWorkAreas = async (officeId) => {
+  try {
+    const response = await axios.get(`http://localhost:8080/api/offices/${officeId}/work-areas`)
+    if (response.data.code === 200) {
+      return response.data.data || []
+    }
+  } catch (error) {
+    console.error('加载办公区列表失败:', error)
+    return []
+  }
+}
+
+// 办公室变化处理
+const onOfficeChange = async () => {
+  selectedWorkAreaId.value = ''
+  if (selectedOfficeId.value) {
+    workAreas.value = await loadWorkAreas(selectedOfficeId.value)
+  } else {
+    workAreas.value = []
+  }
+  filterDevices()
+}
+
+// 表单中办公室变化处理
+const onFormOfficeChange = async () => {
+  deviceForm.workAreaId = ''
+  if (deviceForm.officeId) {
+    formWorkAreas.value = await loadWorkAreas(deviceForm.officeId)
+  } else {
+    formWorkAreas.value = []
+  }
+}
+
+// 筛选设备
+const filterDevices = () => {
+  // 计算属性会自动更新
+}
+
+// 获取办公室名称
+const getOfficeName = (officeId) => {
+  const office = offices.value.find(o => o.id === officeId)
+  return office ? office.officeName : '-'
+}
+
+// 获取办公区名称
+const getWorkAreaName = (workAreaId) => {
+  const allWorkAreas = [...workAreas.value, ...formWorkAreas.value]
+  const workArea = allWorkAreas.find(w => w.id === workAreaId)
+  return workArea ? workArea.areaName : '-'
 }
 
 // 加载设备列表
@@ -244,17 +424,25 @@ const showAddDialog = () => {
 }
 
 // 编辑设备
-const editDevice = (device) => {
+const editDevice = async (device) => {
   isEdit.value = true
   Object.assign(deviceForm, {
     id: device.id,
     deviceId: device.deviceId,
     deviceName: device.deviceName,
     deviceType: device.deviceType,
+    officeId: device.officeId,
+    workAreaId: device.workAreaId,
     location: device.location,
     status: device.status,
     description: device.description
   })
+  
+  // 如果有办公室ID，加载对应的办公区
+  if (device.officeId) {
+    formWorkAreas.value = await loadWorkAreas(device.officeId)
+  }
+  
   dialogVisible.value = true
 }
 
@@ -357,10 +545,13 @@ const resetForm = () => {
     deviceId: '',
     deviceName: '',
     deviceType: '',
+    officeId: '',
+    workAreaId: '',
     location: '',
     status: 'ONLINE',
     description: ''
   })
+  formWorkAreas.value = []
   if (deviceFormRef.value) {
     deviceFormRef.value.clearValidate()
   }
@@ -426,6 +617,7 @@ const getActionText = (action) => {
 
 onMounted(() => {
   loadDevices()
+  loadOffices()
 })
 </script>
 
@@ -453,6 +645,20 @@ onMounted(() => {
 }
 
 .header-actions {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+.filters {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.action-buttons {
   display: flex;
   gap: 10px;
 }
@@ -512,6 +718,20 @@ onMounted(() => {
   }
   
   .header-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  
+  .filters {
+    justify-content: center;
+  }
+  
+  .filters .el-select {
+    width: 120px !important;
+  }
+  
+  .action-buttons {
     justify-content: center;
   }
 }

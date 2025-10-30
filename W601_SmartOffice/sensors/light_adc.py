@@ -35,18 +35,29 @@ class LightADC:
         return (raw / 65535.0) * 3.3
     
     def read_light(self):
-        """Read light intensity in lux (0-1000)
-        
-        Uses direct ADC value mapping for more reliable readings.
-        Light sensor typically outputs higher voltage in brighter conditions.
-        """
+        """Read light intensity in lux (0-1000)"""
         raw = self.read_raw()
         print("[LightADC] Raw ADC: {}".format(raw))
-        
-        # Direct mapping from ADC value to lux
-        # Assume ADC range 0-65535, map to 0-1000 lux
-        # Higher ADC value = brighter light (normal photoresistor behavior)
-        lux = (raw / 65535.0) * 1000.0
+
+        # Use configurable calibration range
+        min_raw = getattr(config, 'LIGHT_ADC_MIN_RAW', 0)
+        max_raw = getattr(config, 'LIGHT_ADC_MAX_RAW', 65535)
+        if max_raw <= min_raw:
+            max_raw = 65535
+            min_raw = 0
+
+        # Clamp and normalize
+        if raw < min_raw:
+            raw = min_raw
+        elif raw > max_raw:
+            raw = max_raw
+        norm = (raw - min_raw) / float(max_raw - min_raw)
+
+        # Optional inversion to match wiring (LDR top/bottom of divider)
+        if getattr(config, 'LIGHT_ADC_INVERT', False):
+            norm = 1.0 - norm
+
+        lux = norm * 1000.0
         
         # Ensure result is within valid range
         result = max(0, min(1000, int(lux)))

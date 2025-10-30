@@ -47,6 +47,13 @@ I2C_SDA = 24   # PA1
 # External light sensor (ADC analog input)
 LIGHT_ADC_PIN = 7   # PB25/SAR-ADC7 - for analog light sensor (AO pin)
 
+# Light sensor calibration and wiring options
+# If shining light makes ADC raw decrease, set invert to True
+LIGHT_ADC_INVERT = True
+# Measured raw range for your sensor/resistor divider; tune after observing logs
+LIGHT_ADC_MIN_RAW = 0
+LIGHT_ADC_MAX_RAW = 65535
+
 # Lighting thresholds (hysteresis)
 LIGHT_ON_LUX = 300
 LIGHT_OFF_LUX = 350

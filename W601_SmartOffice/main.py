@@ -7,6 +7,7 @@ from config import (
     MQTT_CLIENT_ID,
     I2C1_SCL, I2C_SDA,
     CONTROL_TOPIC,
+    CONFIG_UPDATE_TOPIC,
     DEBUG,
 )
 
@@ -83,11 +84,17 @@ def main():
 
     mqtt = MqttClient()
 
-    # 创建配置处理模块
-    config_handler = ConfigHandlerModule(mqtt)
+    # 创建配置处理模块（不设置回调）
+    config_handler = ConfigHandlerModule(mqtt, setup_callback=False)
 
     def on_message(topic, msg):
         try:
+            # 处理配置更新消息
+            if topic == CONFIG_UPDATE_TOPIC:
+                config_handler._handle_config_update(msg)
+                return
+            
+            # 处理控制命令消息
             cmd = ujson.loads(msg)
             if cmd.get("deviceId") != MQTT_CLIENT_ID:
                 return
@@ -101,7 +108,7 @@ def main():
             elif action == "buzzer_off":
                 buzzer.off()
         except Exception as e:
-            print("Control command handling failed:", e)
+            print("Message handling failed:", e)
 
     # Connect and subscribe
     mqtt.set_callback(on_message)

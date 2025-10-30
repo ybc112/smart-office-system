@@ -4,10 +4,57 @@
       <template #header>
         <div class="card-header">
           <span class="header-title">设备列表</span>
-          <el-button type="primary" size="small" @click="refreshDevices" class="refresh-btn">
-            <el-icon><Refresh /></el-icon>
-            <span class="btn-text">刷新</span>
-          </el-button>
+          <div class="header-actions">
+            <!-- 筛选器 -->
+            <div class="filters">
+              <el-select
+                v-model="selectedOfficeId"
+                placeholder="选择办公室"
+                clearable
+                @change="onOfficeChange"
+                style="width: 150px; margin-right: 10px;"
+              >
+                <el-option
+                  v-for="office in offices"
+                  :key="office.id"
+                  :label="office.officeName"
+                  :value="office.id"
+                />
+              </el-select>
+              
+              <el-select
+                v-model="selectedWorkAreaId"
+                placeholder="选择办公区"
+                clearable
+                @change="onWorkAreaChange"
+                style="width: 150px; margin-right: 10px;"
+                :disabled="!selectedOfficeId"
+              >
+                <el-option
+                  v-for="workArea in workAreas"
+                  :key="workArea.id"
+                  :label="workArea.areaName"
+                  :value="workArea.id"
+                />
+              </el-select>
+              
+              <el-select
+                v-model="selectedDeviceType"
+                placeholder="设备类型"
+                clearable
+                @change="filterDevices"
+                style="width: 120px; margin-right: 10px;"
+              >
+                <el-option label="传感器" value="SENSOR" />
+                <el-option label="执行器" value="ACTUATOR" />
+              </el-select>
+            </div>
+            
+            <el-button type="primary" size="small" @click="refreshDevices" class="refresh-btn">
+              <el-icon><Refresh /></el-icon>
+              <span class="btn-text">刷新</span>
+            </el-button>
+          </div>
         </div>
       </template>
 
@@ -241,12 +288,21 @@ import {
   Warning, Sunrise, Clock
 } from '@element-plus/icons-vue'
 import { getDeviceList, getLatestSensorData, controlDevice as controlDeviceApi } from '@/api/device'
+import axios from 'axios'
 
 // 移动端检测
 const isMobile = ref(false)
 
 // 设备列表
 const deviceList = ref([])
+const allDevices = ref([]) // 存储所有设备数据
+
+// 筛选相关
+const offices = ref([])
+const workAreas = ref([])
+const selectedOfficeId = ref(null)
+const selectedWorkAreaId = ref(null)
+const selectedDeviceType = ref(null)
 
 // 详情对话框
 const detailVisible = ref(false)
@@ -275,16 +331,82 @@ const loadDevices = async () => {
     const res = await getDeviceList()
     if (res && res.code === 200) {
       // Ensure deviceList is always an array to satisfy ElTable
-      deviceList.value = Array.isArray(res.data) ? res.data : []
+      allDevices.value = Array.isArray(res.data) ? res.data : []
+      deviceList.value = [...allDevices.value]
+      filterDevices() // 应用当前筛选条件
     } else {
+      allDevices.value = []
       deviceList.value = []
       ElMessage.error(res?.message || '获取设备列表失败')
     }
   } catch (error) {
     console.error('获取设备列表失败:', error)
     ElMessage.error('获取设备列表失败')
+    allDevices.value = []
     deviceList.value = []
   }
+}
+
+// 加载办公室列表
+const loadOffices = async () => {
+  try {
+    const response = await axios.get('http://localhost:8080/office/list')
+    if (response.data.success) {
+      offices.value = response.data.data
+    }
+  } catch (error) {
+    console.error('获取办公室列表失败:', error)
+  }
+}
+
+// 加载办公区列表
+const loadWorkAreas = async (officeId) => {
+  try {
+    const response = await axios.get(`http://localhost:8080/office/${officeId}/work-areas`)
+    if (response.data.success) {
+      workAreas.value = response.data.data
+    }
+  } catch (error) {
+    console.error('获取办公区列表失败:', error)
+    workAreas.value = []
+  }
+}
+
+// 办公室选择变化
+const onOfficeChange = (officeId) => {
+  selectedWorkAreaId.value = null
+  workAreas.value = []
+  if (officeId) {
+    loadWorkAreas(officeId)
+  }
+  filterDevices()
+}
+
+// 办公区选择变化
+const onWorkAreaChange = () => {
+  filterDevices()
+}
+
+// 筛选设备
+const filterDevices = () => {
+  let filtered = [...allDevices.value]
+  
+  // 按办公室筛选
+  if (selectedOfficeId.value) {
+    filtered = filtered.filter(device => device.officeId === selectedOfficeId.value)
+  }
+  
+  // 按办公区筛选
+  if (selectedWorkAreaId.value) {
+    filtered = filtered.filter(device => device.workAreaId === selectedWorkAreaId.value)
+  }
+  
+  // 按设备类型筛选
+  if (selectedDeviceType.value) {
+    filtered = filtered.filter(device => device.deviceType === selectedDeviceType.value)
+  }
+  
+  deviceList.value = filtered
 }
 
 // 刷新设备列表
@@ -386,6 +508,7 @@ const getStatusText = (status) => {
 
 onMounted(() => {
   loadDevices()
+  loadOffices()
   checkMobile()
   window.addEventListener('resize', handleResize)
 })
@@ -411,6 +534,20 @@ onUnmounted(() => {
   align-items: center;
   flex-wrap: wrap;
   gap: 10px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.filters {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .header-title {
@@ -617,8 +754,43 @@ onUnmounted(() => {
     gap: 15px;
   }
   
+  .header-actions {
+    justify-content: center;
+  }
+  
+  .filters {
+    justify-content: center;
+    margin-bottom: 10px;
+  }
+  
+  .filters .el-select {
+    width: 120px !important;
+    margin-right: 5px !important;
+  }
+  
   .refresh-btn .btn-text {
     display: none;
+  }
+  
+  .device-card-mobile {
+    margin: 0 -10px;
+  }
+  
+  .device-header {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .device-actions {
+    justify-content: center;
+  }
+  
+  .device-details {
+    grid-template-columns: 1fr;
+  }
+  
+  .detail-item {
+    justify-content: space-between;
   }
   
   .sensor-data-grid {
@@ -634,6 +806,10 @@ onUnmounted(() => {
     font-size: 16px;
   }
   
+  .control-panel {
+    padding: 10px;
+  }
+  
   .control-item {
     flex-direction: column;
     align-items: stretch;
@@ -643,6 +819,7 @@ onUnmounted(() => {
   
   .control-actions {
     justify-content: center;
+    margin-top: 10px;
   }
   
   .device-detail-dialog .el-dialog__body {

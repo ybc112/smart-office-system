@@ -49,6 +49,24 @@ const routes = [
         name: 'DeviceManagement',
         component: () => import('@/views/DeviceManagement.vue'),
         meta: { title: '设备管理', icon: 'Tools' }
+      },
+      {
+        path: 'office-management',
+        name: 'OfficeManagement',
+        component: () => import('@/views/OfficeManagement.vue'),
+        meta: { title: '办公室管理', icon: 'OfficeBuilding', requiresAdmin: true }
+      },
+      {
+        path: 'fire-safety',
+        name: 'FireSafety',
+        component: () => import('@/views/FireSafety.vue'),
+        meta: { title: '消防安全', icon: 'Warning', requiresAdmin: true }
+      },
+      {
+        path: 'ai-chat',
+        name: 'AiChat',
+        component: () => import('@/views/AiChat.vue'),
+        meta: { title: 'AI助手', icon: 'ChatDotRound' }
       }
     ]
   }

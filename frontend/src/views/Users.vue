@@ -197,6 +197,17 @@
         <el-form-item v-if="!isEdit" label="密码" prop="password">
           <el-input v-model="userForm.password" type="password" placeholder="请输入密码" />
         </el-form-item>
+        <el-form-item v-if="isEdit" label="修改密码">
+          <el-checkbox v-model="changePassword" @change="handleChangePasswordToggle">
+            修改密码
+          </el-checkbox>
+        </el-form-item>
+        <el-form-item v-if="isEdit && changePassword" label="新密码" prop="newPassword">
+          <el-input v-model="userForm.newPassword" type="password" placeholder="请输入新密码" />
+        </el-form-item>
+        <el-form-item v-if="isEdit && changePassword" label="确认密码" prop="confirmPassword">
+          <el-input v-model="userForm.confirmPassword" type="password" placeholder="请再次输入新密码" />
+        </el-form-item>
         <el-form-item label="状态" prop="status">
           <el-radio-group v-model="userForm.status">
             <el-radio label="ACTIVE">启用</el-radio>
@@ -255,6 +266,7 @@ const dialogVisible = ref(false)
 const isEdit = ref(false)
 const saving = ref(false)
 const userFormRef = ref(null)
+const changePassword = ref(false)
 
 // 用户表单
 const userForm = reactive({
@@ -265,6 +277,8 @@ const userForm = reactive({
   phone: '',
   role: 'USER',
   password: '',
+  newPassword: '',
+  confirmPassword: '',
   status: 'ACTIVE'
 })
 
@@ -291,6 +305,23 @@ const rules = {
   password: [
     { required: true, message: '请输入密码', trigger: 'blur' },
     { min: 6, message: '密码长度不能小于6位', trigger: 'blur' }
+  ],
+  newPassword: [
+    { required: true, message: '请输入新密码', trigger: 'blur' },
+    { min: 6, message: '密码长度不能小于6位', trigger: 'blur' }
+  ],
+  confirmPassword: [
+    { required: true, message: '请确认密码', trigger: 'blur' },
+    { 
+      validator: (rule, value, callback) => {
+        if (value !== userForm.newPassword) {
+          callback(new Error('两次输入的密码不一致'))
+        } else {
+          callback()
+        }
+      }, 
+      trigger: 'blur' 
+    }
   ]
 }
 
@@ -370,6 +401,7 @@ const showAddDialog = () => {
 // 编辑用户
 const editUser = (user) => {
   isEdit.value = true
+  changePassword.value = false
   Object.assign(userForm, {
     id: user.id,
     username: user.username,
@@ -378,9 +410,21 @@ const editUser = (user) => {
     phone: user.phone,
     role: user.role,
     status: user.status,  // 这里已经是字符串状态了（ACTIVE/DISABLED）
-    password: ''
+    password: '',
+    newPassword: '',
+    confirmPassword: ''
   })
   dialogVisible.value = true
+}
+
+// 处理密码修改切换
+const handleChangePasswordToggle = (value) => {
+  if (!value) {
+    userForm.newPassword = ''
+    userForm.confirmPassword = ''
+    // 清除密码字段的验证错误
+    userFormRef.value?.clearValidate(['newPassword', 'confirmPassword'])
+  }
 }
 
 // 保存用户
@@ -395,6 +439,15 @@ const saveUser = async () => {
       ...userForm,
       status: userForm.status === 'ACTIVE' ? 1 : 0  // 转换状态：ACTIVE -> 1, DISABLED -> 0
     }
+    
+    // 如果是编辑模式且选择了修改密码，则使用新密码
+    if (isEdit.value && changePassword.value) {
+      submitData.password = userForm.newPassword
+    }
+    
+    // 清理不需要的字段
+    delete submitData.newPassword
+    delete submitData.confirmPassword
     
     let res
     if (isEdit.value) {
@@ -469,6 +522,7 @@ const deleteUser = async (user) => {
 
 // 重置表单
 const resetForm = () => {
+  changePassword.value = false
   Object.assign(userForm, {
     id: null,
     username: '',
@@ -477,6 +531,8 @@ const resetForm = () => {
     phone: '',
     role: 'USER',
     password: '',
+    newPassword: '',
+    confirmPassword: '',
     status: 'ACTIVE'
   })
   userFormRef.value?.resetFields()

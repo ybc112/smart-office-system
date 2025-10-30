@@ -54,6 +54,57 @@ public class DeviceController {
     }
 
     /**
+     * 根据办公室ID获取设备列表
+     */
+    @GetMapping("/office/{officeId}")
+    public Result<List<DeviceInfo>> getDevicesByOfficeId(@PathVariable Long officeId) {
+        try {
+            List<DeviceInfo> devices = deviceInfoMapper.selectList(
+                    new LambdaQueryWrapper<DeviceInfo>()
+                            .eq(DeviceInfo::getOfficeId, officeId)
+            );
+            return Result.success(devices);
+        } catch (Exception e) {
+            log.error("获取办公室设备列表失败", e);
+            return Result.fail("获取办公室设备列表失败");
+        }
+    }
+
+    /**
+     * 根据办公区ID获取设备列表
+     */
+    @GetMapping("/work-area/{workAreaId}")
+    public Result<List<DeviceInfo>> getDevicesByWorkAreaId(@PathVariable Long workAreaId) {
+        try {
+            List<DeviceInfo> devices = deviceInfoMapper.selectList(
+                    new LambdaQueryWrapper<DeviceInfo>()
+                            .eq(DeviceInfo::getWorkAreaId, workAreaId)
+            );
+            return Result.success(devices);
+        } catch (Exception e) {
+            log.error("获取办公区设备列表失败", e);
+            return Result.fail("获取办公区设备列表失败");
+        }
+    }
+
+    /**
+     * 根据设备类型获取设备列表
+     */
+    @GetMapping("/type/{deviceType}")
+    public Result<List<DeviceInfo>> getDevicesByType(@PathVariable String deviceType) {
+        try {
+            List<DeviceInfo> devices = deviceInfoMapper.selectList(
+                    new LambdaQueryWrapper<DeviceInfo>()
+                            .eq(DeviceInfo::getDeviceType, deviceType)
+            );
+            return Result.success(devices);
+        } catch (Exception e) {
+            log.error("获取设备类型列表失败", e);
+            return Result.fail("获取设备类型列表失败");
+        }
+    }
+
+    /**
      * 根据设备ID获取设备信息
      */
     @GetMapping("/{deviceId}")

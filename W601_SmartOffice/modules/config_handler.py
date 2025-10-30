@@ -9,12 +9,13 @@ from config import (
 class ConfigHandlerModule:
     """配置处理模块，负责接收和应用配置更新"""
     
-    def __init__(self, mqtt_client):
+    def __init__(self, mqtt_client, setup_callback=True):
         self.mqtt = mqtt_client
         self.config_params = {
             "data_collect_interval": 10000  # 默认10秒，单位毫秒
         }
-        self._setup_mqtt_callback()
+        if setup_callback:
+            self._setup_mqtt_callback()
     
     def _setup_mqtt_callback(self):
         """设置MQTT消息回调"""

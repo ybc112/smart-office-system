@@ -66,24 +66,24 @@
           v-for="alarm in recentAlarms" 
           :key="alarm.id" 
           class="alarm-item"
-          :class="`alarm-${alarm.level?.toLowerCase()}`"
+          :class="`alarm-${getLevelClass(alarm.alarmLevel)}`"
         >
           <div class="alarm-content">
             <div class="alarm-header">
               <span class="alarm-type">{{ alarm.alarmType }}</span>
-              <span class="alarm-time">{{ formatTime(alarm.createTime) }}</span>
+              <span class="alarm-time">{{ formatTime(alarm.alarmTime || alarm.createTime) }}</span>
             </div>
-            <div class="alarm-message">{{ alarm.message }}</div>
+            <div class="alarm-message">{{ alarm.alarmMessage }}</div>
             <div class="alarm-location" v-if="alarm.deviceId">
               设备ID: {{ alarm.deviceId }}
             </div>
           </div>
           <div class="alarm-level">
             <el-tag 
-              :type="getAlarmTagType(alarm.level)" 
+              :type="getAlarmTagType(alarm.alarmLevel)" 
               size="small"
             >
-              {{ alarm.level }}
+              {{ getAlarmLevelText(alarm.alarmLevel) }}
             </el-tag>
           </div>
         </div>
@@ -341,6 +341,16 @@ const getAlarmLevelText = (level) => {
     'INFO': '提示'
   }
   return texts[level] || level
+}
+
+// 将后端告警级别映射到样式类
+const getLevelClass = (level) => {
+  const map = {
+    'CRITICAL': 'critical',
+    'WARNING': 'high',
+    'INFO': 'low'
+  }
+  return map[level] || 'low'
 }
 
 // 跳转到告警页面

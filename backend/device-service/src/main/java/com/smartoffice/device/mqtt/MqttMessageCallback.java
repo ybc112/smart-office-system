@@ -36,7 +36,7 @@ public class MqttMessageCallback implements MqttCallback {
     @Override
     public void messageArrived(String topic, MqttMessage message) throws Exception {
         try {
-            String payload = new String(message.getPayload());
+            String payload = new String(message.getPayload(), "UTF-8");
             log.error("🔔🔔🔔 收到MQTT消息 - Topic: {}, Payload: {}", topic, payload);
 
             // 根据主题分发处理

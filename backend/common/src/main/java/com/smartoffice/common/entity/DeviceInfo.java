@@ -41,6 +41,16 @@ public class DeviceInfo implements Serializable {
     private String location;
 
     /**
+     * 所属办公室ID
+     */
+    private Long officeId;
+
+    /**
+     * 所属办公区ID
+     */
+    private Long workAreaId;
+
+    /**
      * 设备状态：ONLINE-在线, OFFLINE-离线, FAULT-故障
      */
     private String status;

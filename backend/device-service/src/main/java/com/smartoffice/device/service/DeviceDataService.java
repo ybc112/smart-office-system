@@ -150,7 +150,7 @@ public class DeviceDataService {
             // 发送邮件通知
             try {
                 // 这里可以配置管理员邮箱，暂时使用固定邮箱
-                String adminEmail = "qpeesaupmqvuddei@qq.com";
+                String adminEmail = "2818476632@qq.com";
                 emailService.sendAlarmEmail(
                     adminEmail,
                     alarmMessageDTO.getDeviceId(),
