@@ -176,19 +176,19 @@ const stats = computed(() => [
   },
   {
     title: '温度',
-    value: latestData.value ? `${latestData.value.temperature}°C` : '--',
+    value: latestData.value ? `${parseFloat(latestData.value.temperature).toFixed(2)}°C` : '--',
     icon: Orange,
     color: '#ff7875'
   },
   {
     title: '湿度',
-    value: latestData.value ? `${latestData.value.humidity}%` : '--',
+    value: latestData.value ? `${parseFloat(latestData.value.humidity).toFixed(2)}%` : '--',
     icon: Coffee,
     color: '#40a9ff'
   },
   {
     title: '光照',
-    value: latestData.value ? `${latestData.value.light}lux` : '--',
+    value: latestData.value ? `${parseFloat(latestData.value.light).toFixed(0)}lux` : '--',
     icon: Sunny,
     color: '#faad14'
   },

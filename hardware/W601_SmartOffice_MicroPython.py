@@ -64,7 +64,10 @@ sensor_data = {
 
 # 动态配置参数
 config_params = {
-    "data_collect_interval": 10000  # 默认10秒，单位毫秒
+    "data_collect_interval": 10000,  # 默认10秒，单位毫秒
+    "light_collect_interval": 10000,  # 光照采集间隔
+    "temp_humidity_collect_interval": 10000,  # 温湿度采集间隔
+    "flame_detect_interval": 5000   # 火焰检测间隔
 }
 
 # 全局变量
@@ -468,7 +471,7 @@ def handle_config_update(msg_str):
         config_data = json.loads(msg_str)
         print(f"[CONFIG] 📥 收到配置更新: {config_data}")
         
-        # 处理数据采集间隔配置
+        # 处理各种采集间隔配置
         if "data.collect.interval" in config_data:
             interval_seconds = int(config_data["data.collect.interval"])
             interval_ms = interval_seconds * 1000
@@ -477,6 +480,24 @@ def handle_config_update(msg_str):
             
             # 重新启动定时器以应用新的间隔
             restart_timer()
+        
+        if "light.collect.interval" in config_data:
+            interval_seconds = int(config_data["light.collect.interval"])
+            interval_ms = interval_seconds * 1000
+            config_params["light_collect_interval"] = interval_ms
+            print(f"[CONFIG] ✅ 更新光照采集间隔: {interval_seconds}秒 ({interval_ms}毫秒)")
+        
+        if "temp.humidity.collect.interval" in config_data:
+            interval_seconds = int(config_data["temp.humidity.collect.interval"])
+            interval_ms = interval_seconds * 1000
+            config_params["temp_humidity_collect_interval"] = interval_ms
+            print(f"[CONFIG] ✅ 更新温湿度采集间隔: {interval_seconds}秒 ({interval_ms}毫秒)")
+        
+        if "flame.detect.interval" in config_data:
+            interval_seconds = int(config_data["flame.detect.interval"])
+            interval_ms = interval_seconds * 1000
+            config_params["flame_detect_interval"] = interval_ms
+            print(f"[CONFIG] ✅ 更新火焰检测间隔: {interval_seconds}秒 ({interval_ms}毫秒)")
         
         # 可以在这里添加其他配置项的处理
         

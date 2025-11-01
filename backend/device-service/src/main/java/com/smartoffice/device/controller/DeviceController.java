@@ -221,15 +221,9 @@ public class DeviceController {
         try {
             log.info("[后端] 添加设备请求: {}", deviceInfo.getDeviceName());
             
-            // 检查设备ID是否已存在
-            DeviceInfo existing = deviceInfoMapper.selectOne(
-                    new LambdaQueryWrapper<DeviceInfo>()
-                            .eq(DeviceInfo::getDeviceId, deviceInfo.getDeviceId())
-            );
-            
-            if (existing != null) {
-                return Result.fail("设备ID已存在");
-            }
+            // 自动生成设备编号
+            String deviceId = generateDeviceId(deviceInfo.getDeviceType());
+            deviceInfo.setDeviceId(deviceId);
             
             // 设置默认值
             if (deviceInfo.getOnlineStatus() == null) {
@@ -240,13 +234,60 @@ public class DeviceController {
             }
             
             deviceInfoMapper.insert(deviceInfo);
-            log.info("[后端] 设备添加成功: {}", deviceInfo.getDeviceName());
+            log.info("[后端] 设备添加成功: {} (设备编号: {})", deviceInfo.getDeviceName(), deviceId);
             
-            return Result.success("设备添加成功");
+            return Result.success("设备添加成功，设备编号：" + deviceId);
         } catch (Exception e) {
             log.error("[后端] 设备添加失败", e);
             return Result.fail("设备添加失败");
         }
+    }
+    
+    /**
+     * 生成设备编号
+     */
+    private String generateDeviceId(String deviceType) {
+        String prefix;
+        switch (deviceType) {
+            case "AIR_CONDITIONER":
+                prefix = "AC";
+                break;
+            case "HUMIDIFIER":
+                prefix = "HM";
+                break;
+            case "LIGHT":
+                prefix = "LT";
+                break;
+            case "SENSOR":
+                prefix = "SN";
+                break;
+            default:
+                prefix = "DV";
+                break;
+        }
+        
+        // 查询该类型设备的最大编号
+        List<DeviceInfo> devices = deviceInfoMapper.selectList(
+                new LambdaQueryWrapper<DeviceInfo>()
+                        .like(DeviceInfo::getDeviceId, prefix)
+                        .orderByDesc(DeviceInfo::getDeviceId)
+        );
+        
+        int maxNumber = 0;
+        for (DeviceInfo device : devices) {
+            String deviceId = device.getDeviceId();
+            if (deviceId.startsWith(prefix)) {
+                try {
+                    String numberPart = deviceId.substring(prefix.length());
+                    int number = Integer.parseInt(numberPart);
+                    maxNumber = Math.max(maxNumber, number);
+                } catch (NumberFormatException e) {
+                    // 忽略非数字后缀的设备编号
+                }
+            }
+        }
+        
+        return prefix + String.format("%03d", maxNumber + 1);
     }
 
     /**

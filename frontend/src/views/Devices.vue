@@ -190,7 +190,7 @@
               <el-icon :size="isMobile ? 24 : 30" color="#409EFF"><Sunny /></el-icon>
               <div class="data-info">
                 <div class="data-label">光照强度</div>
-                <div class="data-value">{{ deviceSensorData.light || '--' }} lux</div>
+                <div class="data-value">{{ deviceSensorData.light ? parseFloat(deviceSensorData.light).toFixed(0) : '--' }} lux</div>
               </div>
             </div>
           </el-card>
@@ -200,7 +200,7 @@
               <el-icon :size="isMobile ? 24 : 30" color="#F56C6C"><Orange /></el-icon>
               <div class="data-info">
                 <div class="data-label">温度</div>
-                <div class="data-value">{{ deviceSensorData.temperature || '--' }} ℃</div>
+                <div class="data-value">{{ deviceSensorData.temperature ? parseFloat(deviceSensorData.temperature).toFixed(2) : '--' }} ℃</div>
               </div>
             </div>
           </el-card>
@@ -210,7 +210,7 @@
               <el-icon :size="isMobile ? 24 : 30" color="#67C23A"><Coffee /></el-icon>
               <div class="data-info">
                 <div class="data-label">湿度</div>
-                <div class="data-value">{{ deviceSensorData.humidity || '--' }} %</div>
+                <div class="data-value">{{ deviceSensorData.humidity ? parseFloat(deviceSensorData.humidity).toFixed(2) : '--' }} %</div>
               </div>
             </div>
           </el-card>
@@ -350,9 +350,9 @@ const loadDevices = async () => {
 // 加载办公室列表
 const loadOffices = async () => {
   try {
-    const response = await axios.get('http://localhost:8080/office/list')
-    if (response.data.success) {
-      offices.value = response.data.data
+    const response = await axios.get('/api/office/list')
+    if (response.data.code === 200) {
+      offices.value = response.data.data || []
     }
   } catch (error) {
     console.error('获取办公室列表失败:', error)
@@ -362,9 +362,9 @@ const loadOffices = async () => {
 // 加载办公区列表
 const loadWorkAreas = async (officeId) => {
   try {
-    const response = await axios.get(`http://localhost:8080/office/${officeId}/work-areas`)
-    if (response.data.success) {
-      workAreas.value = response.data.data
+    const response = await axios.get(`/api/office/${officeId}/work-areas`)
+    if (response.data.code === 200) {
+      workAreas.value = response.data.data || []
     }
   } catch (error) {
     console.error('获取办公区列表失败:', error)

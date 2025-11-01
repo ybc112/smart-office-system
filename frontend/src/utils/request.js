@@ -6,7 +6,7 @@ import router from '@/router'
 const request = axios.create({
   // 开发环境使用相对路径，配合Vite代理解决CORS
   baseURL: import.meta.env.DEV ? '' : (import.meta.env.VITE_API_BASE_URL || ''),
-  timeout: 10000
+  timeout: 60000 // 增加到60秒，适应AI服务的响应时间
 })
 
 // 请求拦截器

@@ -147,6 +147,13 @@ const sendMessage = async () => {
 
   // 显示AI正在输入
   isTyping.value = true
+  
+  // 添加进度提示
+  ElMessage({
+    message: 'AI正在思考中，请稍候...',
+    type: 'info',
+    duration: 2000
+  })
 
   try {
     // 调用真实的AI API
@@ -164,13 +171,29 @@ const sendMessage = async () => {
     await nextTick()
     scrollToBottom()
     
+    // 成功提示
+    ElMessage({
+      message: 'AI回复完成',
+      type: 'success',
+      duration: 1000
+    })
+    
   } catch (error) {
     console.error('AI回复错误:', error)
+    
+    let errorMessage = 'AI助手暂时无法回复，请稍后重试'
+    
+    // 根据错误类型提供更具体的提示
+    if (error.code === 'ECONNABORTED') {
+      errorMessage = 'AI服务响应超时，请稍后重试或检查网络连接'
+    } else if (error.response?.status === 500) {
+      errorMessage = 'AI服务内部错误，请联系系统管理员'
+    }
     
     // 如果API调用失败，使用备用回复
     const fallbackMessage = {
       type: 'ai',
-      content: '抱歉，AI服务暂时不可用。您可以尝试以下操作：<ul><li>检查网络连接</li><li>稍后重试</li><li>联系系统管理员</li></ul>',
+      content: `抱歉，${errorMessage}。您可以尝试以下操作：<ul><li>检查网络连接</li><li>稍后重试</li><li>联系系统管理员</li></ul>`,
       timestamp: new Date()
     }
     
@@ -178,7 +201,11 @@ const sendMessage = async () => {
     await nextTick()
     scrollToBottom()
     
-    ElMessage.error('AI助手暂时无法回复，请稍后重试')
+    ElMessage({
+      message: errorMessage,
+      type: 'error',
+      duration: 3000
+    })
   } finally {
     isTyping.value = false
   }
@@ -198,9 +225,11 @@ const clearChat = () => {
 
 // 滚动到底部
 const scrollToBottom = () => {
-  if (messagesContainer.value) {
-    messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
-  }
+  nextTick(() => {
+    if (messagesContainer.value) {
+      messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
+    }
+  })
 }
 
 // 格式化时间
@@ -236,6 +265,7 @@ onMounted(() => {
   height: calc(100vh - 120px);
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .page-header {
@@ -261,16 +291,21 @@ onMounted(() => {
   flex: 1;
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 220px);
+  height: calc(100vh - 280px);
+  min-height: 400px;
 }
 
 .chat-messages {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 20px;
   background: #fafafa;
   border-radius: 8px;
-  margin-bottom: 20px;
+  margin-bottom: 0;
+  scroll-behavior: smooth;
+  max-height: calc(100vh - 350px);
+  min-height: 300px;
 }
 
 .welcome-message {
@@ -394,6 +429,12 @@ onMounted(() => {
 
 .chat-input {
   flex-shrink: 0;
+  position: sticky;
+  bottom: 0;
+  background: white;
+  padding: 15px 0;
+  border-top: 1px solid #e4e7ed;
+  z-index: 10;
 }
 
 .input-actions {
@@ -425,20 +466,66 @@ onMounted(() => {
 
 /* 滚动条样式 */
 .chat-messages::-webkit-scrollbar {
-  width: 6px;
+  width: 8px;
 }
 
 .chat-messages::-webkit-scrollbar-track {
   background: #f1f1f1;
-  border-radius: 3px;
+  border-radius: 4px;
 }
 
 .chat-messages::-webkit-scrollbar-thumb {
   background: #c1c1c1;
-  border-radius: 3px;
+  border-radius: 4px;
+  transition: background 0.3s;
 }
 
 .chat-messages::-webkit-scrollbar-thumb:hover {
   background: #a8a8a8;
+}
+
+.chat-messages::-webkit-scrollbar-corner {
+  background: #f1f1f1;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .ai-chat {
+    padding: 10px;
+    height: calc(100vh - 80px);
+  }
+  
+  .chat-container {
+    height: calc(100vh - 200px);
+  }
+  
+  .chat-messages {
+    padding: 15px;
+  }
+  
+  .chat-input {
+    padding: 10px 0;
+  }
+  
+  .input-actions {
+    flex-direction: column;
+    gap: 10px;
+  }
+}
+
+/* 改进消息动画 */
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.message-item {
+  animation: slideInUp 0.4s ease-out;
 }
 </style>

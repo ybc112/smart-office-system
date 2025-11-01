@@ -27,4 +27,14 @@ public class AiChatResponseDTO {
      * 是否成功
      */
     private boolean success = true;
+    
+    /**
+     * 是否为降级响应
+     */
+    private boolean fallback = false;
+    
+    /**
+     * 错误信息（仅在出错时提供）
+     */
+    private String errorMessage;
 }

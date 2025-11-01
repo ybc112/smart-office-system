@@ -120,54 +120,80 @@
       @close="resetForm"
     >
       <el-form :model="deviceForm" :rules="deviceRules" ref="deviceFormRef" label-width="100px">
-        <el-form-item label="设备编号" prop="deviceId">
-          <el-input v-model="deviceForm.deviceId" :disabled="isEdit" placeholder="请输入设备编号" />
-        </el-form-item>
-        <el-form-item label="设备名称" prop="deviceName">
-          <el-input v-model="deviceForm.deviceName" placeholder="请输入设备名称" />
-        </el-form-item>
-        <el-form-item label="设备类型" prop="deviceType">
-          <el-select v-model="deviceForm.deviceType" placeholder="请选择设备类型" style="width: 100%">
-            <el-option label="空调" value="AIR_CONDITIONER" />
-            <el-option label="加湿器" value="HUMIDIFIER" />
-            <el-option label="灯光" value="LIGHT" />
-            <el-option label="传感器" value="SENSOR" />
-            <el-option label="其他" value="OTHER" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="办公室" prop="officeId">
-          <el-select v-model="deviceForm.officeId" placeholder="请选择办公室" style="width: 100%" @change="onFormOfficeChange">
-            <el-option 
-              v-for="office in offices" 
-              :key="office.id" 
-              :label="office.officeName" 
-              :value="office.id"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="办公区" prop="workAreaId">
-          <el-select v-model="deviceForm.workAreaId" placeholder="请选择办公区" style="width: 100%" :disabled="!deviceForm.officeId">
-            <el-option 
-              v-for="workArea in formWorkAreas" 
-              :key="workArea.id" 
-              :label="workArea.areaName" 
-              :value="workArea.id"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="位置" prop="location">
-          <el-input v-model="deviceForm.location" placeholder="请输入设备位置" />
-        </el-form-item>
-        <el-form-item label="状态" prop="status">
-          <el-select v-model="deviceForm.status" placeholder="请选择设备状态" style="width: 100%">
-            <el-option label="在线" value="ONLINE" />
-            <el-option label="离线" value="OFFLINE" />
-            <el-option label="故障" value="FAULT" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="描述" prop="description">
-          <el-input v-model="deviceForm.description" type="textarea" :rows="3" placeholder="请输入设备描述" />
-        </el-form-item>
+        <el-row :gutter="20" v-if="isEdit">
+          <el-col :span="24">
+            <el-form-item label="设备编号" prop="deviceId">
+              <el-input v-model="deviceForm.deviceId" placeholder="设备编号" disabled />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="设备名称" prop="deviceName">
+              <el-input v-model="deviceForm.deviceName" placeholder="请输入设备名称" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="设备类型" prop="deviceType">
+              <el-select v-model="deviceForm.deviceType" placeholder="请选择设备类型" style="width: 100%">
+                <el-option label="空调" value="AIR_CONDITIONER" />
+                <el-option label="加湿器" value="HUMIDIFIER" />
+                <el-option label="灯光" value="LIGHT" />
+                <el-option label="传感器" value="SENSOR" />
+                <el-option label="其他" value="OTHER" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="办公室" prop="officeId">
+              <el-select v-model="deviceForm.officeId" placeholder="请选择办公室" style="width: 100%" @change="onFormOfficeChange">
+                <el-option 
+                  v-for="office in offices" 
+                  :key="office.id" 
+                  :label="office.officeName" 
+                  :value="office.id"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="办公区" prop="workAreaId">
+              <el-select v-model="deviceForm.workAreaId" placeholder="请选择办公区" style="width: 100%" :disabled="!deviceForm.officeId">
+                <el-option 
+                  v-for="workArea in formWorkAreas" 
+                  :key="workArea.id" 
+                  :label="workArea.areaName" 
+                  :value="workArea.id"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="状态" prop="status">
+              <el-select v-model="deviceForm.status" placeholder="请选择状态" style="width: 100%">
+                <el-option label="在线" value="ONLINE" />
+                <el-option label="离线" value="OFFLINE" />
+                <el-option label="故障" value="FAULT" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="20">
+          <el-col :span="24">
+            <el-form-item label="描述">
+              <el-input
+                v-model="deviceForm.description"
+                type="textarea"
+                :rows="3"
+                placeholder="请输入设备描述"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
       </el-form>
       <template #footer>
         <div class="dialog-footer">
@@ -277,7 +303,6 @@ const deviceForm = reactive({
   deviceType: '',
   officeId: '',
   workAreaId: '',
-  location: '',
   status: 'ONLINE',
   description: ''
 })
@@ -287,9 +312,6 @@ const deviceFormRef = ref()
 
 // 表单验证规则
 const deviceRules = {
-  deviceId: [
-    { required: true, message: '请输入设备编号', trigger: 'blur' }
-  ],
   deviceName: [
     { required: true, message: '请输入设备名称', trigger: 'blur' }
   ],
@@ -302,11 +324,8 @@ const deviceRules = {
   workAreaId: [
     { required: true, message: '请选择办公区', trigger: 'change' }
   ],
-  location: [
-    { required: true, message: '请输入设备位置', trigger: 'blur' }
-  ],
   status: [
-    { required: true, message: '请选择设备状态', trigger: 'change' }
+    { required: true, message: '请选择状态', trigger: 'change' }
   ]
 }
 
@@ -332,7 +351,7 @@ const filteredDeviceList = computed(() => {
 // 加载办公室列表
 const loadOffices = async () => {
   try {
-    const response = await axios.get('http://localhost:8080/api/offices')
+    const response = await axios.get('/api/office/list')
     if (response.data.code === 200) {
       offices.value = response.data.data || []
     }
@@ -344,7 +363,7 @@ const loadOffices = async () => {
 // 加载办公区列表
 const loadWorkAreas = async (officeId) => {
   try {
-    const response = await axios.get(`http://localhost:8080/api/offices/${officeId}/work-areas`)
+    const response = await axios.get(`/api/office/${officeId}/work-areas`)
     if (response.data.code === 200) {
       return response.data.data || []
     }
@@ -433,7 +452,6 @@ const editDevice = async (device) => {
     deviceType: device.deviceType,
     officeId: device.officeId,
     workAreaId: device.workAreaId,
-    location: device.location,
     status: device.status,
     description: device.description
   })
@@ -547,7 +565,6 @@ const resetForm = () => {
     deviceType: '',
     officeId: '',
     workAreaId: '',
-    location: '',
     status: 'ONLINE',
     description: ''
   })

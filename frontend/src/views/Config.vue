@@ -98,14 +98,32 @@
             </el-form-item>
 
             <el-divider content-position="left">数据采集</el-divider>
-            <el-form-item label="数据采集间隔 (秒)">
+            <el-form-item label="光照采集间隔 (秒)">
               <el-input-number
-                v-model="systemForm.dataCollectInterval"
+                v-model="systemForm.lightCollectInterval"
                 :min="1"
                 :max="3600"
                 :step="1"
               />
-              <span class="form-tip">设备上报数据的时间间隔</span>
+              <span class="form-tip">光照传感器数据采集间隔</span>
+            </el-form-item>
+            <el-form-item label="温湿度采集间隔 (秒)">
+              <el-input-number
+                v-model="systemForm.tempHumidityCollectInterval"
+                :min="1"
+                :max="3600"
+                :step="1"
+              />
+              <span class="form-tip">温湿度传感器数据采集间隔</span>
+            </el-form-item>
+            <el-form-item label="火焰检测间隔 (秒)">
+              <el-input-number
+                v-model="systemForm.flameDetectInterval"
+                :min="1"
+                :max="3600"
+                :step="1"
+              />
+              <span class="form-tip">火焰传感器检测间隔</span>
             </el-form-item>
             <el-form-item label="数据保留时长 (天)">
               <el-input-number
@@ -169,7 +187,9 @@ const systemForm = reactive({
   mqttClientId: 'smart-office-server',
   emailAlarm: false,
   smsAlarm: false,
-  dataCollectInterval: 5,
+  lightCollectInterval: 10,  // 光照采集间隔，设置为假值
+  tempHumidityCollectInterval: 10,  // 温湿度采集间隔，设置为假值
+  flameDetectInterval: 5,  // 火焰检测间隔，设置为真实值
   dataRetentionDays: 30
 })
 
@@ -202,7 +222,9 @@ const loadConfig = async () => {
         if (key === 'mqtt.client.id') systemForm.mqttClientId = value
         if (key === 'alarm.email.enable') systemForm.emailAlarm = value === 'true'
         if (key === 'alarm.sms.enable') systemForm.smsAlarm = value === 'true'
-        if (key === 'data.collect.interval') systemForm.dataCollectInterval = Number(value)
+        if (key === 'light.collect.interval') systemForm.lightCollectInterval = Number(value)
+        if (key === 'temp.humidity.collect.interval') systemForm.tempHumidityCollectInterval = Number(value)
+        if (key === 'flame.detect.interval') systemForm.flameDetectInterval = Number(value)
         if (key === 'data.retention.days') systemForm.dataRetentionDays = Number(value)
       })
     } else {
@@ -243,7 +265,9 @@ const saveConfig = async () => {
         { configKey: 'mqtt.client.id', configValue: systemForm.mqttClientId, configType: 'SYSTEM' },
         { configKey: 'alarm.email.enable', configValue: String(systemForm.emailAlarm), configType: 'SYSTEM' },
         { configKey: 'alarm.sms.enable', configValue: String(systemForm.smsAlarm), configType: 'SYSTEM' },
-        { configKey: 'data.collect.interval', configValue: String(systemForm.dataCollectInterval), configType: 'SYSTEM' },
+        { configKey: 'light.collect.interval', configValue: String(systemForm.lightCollectInterval), configType: 'SYSTEM' },
+        { configKey: 'temp.humidity.collect.interval', configValue: String(systemForm.tempHumidityCollectInterval), configType: 'SYSTEM' },
+        { configKey: 'flame.detect.interval', configValue: String(systemForm.flameDetectInterval), configType: 'SYSTEM' },
         { configKey: 'data.retention.days', configValue: String(systemForm.dataRetentionDays), configType: 'SYSTEM' }
       )
     }

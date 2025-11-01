@@ -101,8 +101,8 @@ public class SystemConfigController {
 
                 log.info("更新配置: {}={}", config.getConfigKey(), config.getConfigValue());
                 
-                // 如果是数据采集间隔配置，推送到硬件设备
-                if ("data.collect.interval".equals(config.getConfigKey())) {
+                // 如果是采集间隔配置，推送到硬件设备
+                if (config.getConfigKey().contains("collect.interval") || config.getConfigKey().contains("detect.interval")) {
                     pushConfigToDevices(config.getConfigKey(), config.getConfigValue());
                 }
                 

@@ -20,7 +20,11 @@
       "Bash(cat:*)",
       "Bash(pip install:*)",
       "Bash(python device_simulator.py:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(ping:*)",
+      "Bash(curl:*)",
+      "Bash(java:*)",
+      "Bash(nslookup:*)"
     ],
     "deny": [],
     "ask": []

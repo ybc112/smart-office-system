@@ -172,7 +172,7 @@
     <!-- 疏散图对话框 -->
     <el-dialog v-model="evacuationMapVisible" title="消防疏散图" width="80%" center>
       <div class="evacuation-map">
-        <img src="/src/assets/images/evacuation-map.png" alt="消防疏散图" style="width: 100%; height: auto;" />
+        <img src="/evacuation-map.png" alt="消防疏散图" style="width: 100%; height: auto;" />
       </div>
     </el-dialog>
   </div>

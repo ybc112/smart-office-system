@@ -12,7 +12,10 @@ class ConfigHandlerModule:
     def __init__(self, mqtt_client, setup_callback=True):
         self.mqtt = mqtt_client
         self.config_params = {
-            "data_collect_interval": 10000  # 默认10秒，单位毫秒
+            "data_collect_interval": 10000,  # 默认10秒，单位毫秒
+            "light_collect_interval": 10000,  # 光照采集间隔
+            "temp_humidity_collect_interval": 10000,  # 温湿度采集间隔
+            "flame_detect_interval": 5000   # 火焰检测间隔
         }
         if setup_callback:
             self._setup_mqtt_callback()
@@ -38,13 +41,34 @@ class ConfigHandlerModule:
             if DEBUG:
                 print("[CONFIG] 收到配置更新:", config_data)
             
-            # 处理数据采集间隔配置
+            # 处理各种采集间隔配置
             if "data.collect.interval" in config_data:
                 interval_seconds = int(config_data["data.collect.interval"])
                 interval_ms = interval_seconds * 1000
                 self.config_params["data_collect_interval"] = interval_ms
                 if DEBUG:
                     print("[CONFIG] 更新数据采集间隔: {}秒 ({}毫秒)".format(interval_seconds, interval_ms))
+            
+            if "light.collect.interval" in config_data:
+                interval_seconds = int(config_data["light.collect.interval"])
+                interval_ms = interval_seconds * 1000
+                self.config_params["light_collect_interval"] = interval_ms
+                if DEBUG:
+                    print("[CONFIG] 更新光照采集间隔: {}秒 ({}毫秒)".format(interval_seconds, interval_ms))
+            
+            if "temp.humidity.collect.interval" in config_data:
+                interval_seconds = int(config_data["temp.humidity.collect.interval"])
+                interval_ms = interval_seconds * 1000
+                self.config_params["temp_humidity_collect_interval"] = interval_ms
+                if DEBUG:
+                    print("[CONFIG] 更新温湿度采集间隔: {}秒 ({}毫秒)".format(interval_seconds, interval_ms))
+            
+            if "flame.detect.interval" in config_data:
+                interval_seconds = int(config_data["flame.detect.interval"])
+                interval_ms = interval_seconds * 1000
+                self.config_params["flame_detect_interval"] = interval_ms
+                if DEBUG:
+                    print("[CONFIG] 更新火焰检测间隔: {}秒 ({}毫秒)".format(interval_seconds, interval_ms))
             
             # 可以在这里添加其他配置项的处理
             
@@ -65,3 +89,15 @@ class ConfigHandlerModule:
     def get_data_collect_interval(self):
         """获取当前数据采集间隔（毫秒）"""
         return self.config_params["data_collect_interval"]
+    
+    def get_light_collect_interval(self):
+        """获取当前光照采集间隔（毫秒）"""
+        return self.config_params["light_collect_interval"]
+    
+    def get_temp_humidity_collect_interval(self):
+        """获取当前温湿度采集间隔（毫秒）"""
+        return self.config_params["temp_humidity_collect_interval"]
+    
+    def get_flame_detect_interval(self):
+        """获取当前火焰检测间隔（毫秒）"""
+        return self.config_params["flame_detect_interval"]

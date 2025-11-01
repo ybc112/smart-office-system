@@ -47,6 +47,9 @@ const char* TOPIC_CONFIG_UPDATE = "office/config/update";
 
 // 数据上报间隔（毫秒）
 unsigned long reportInterval = 30000; // 默认30秒，可通过配置更新
+unsigned long lightCollectInterval = 10000; // 光照采集间隔，默认10秒
+unsigned long tempHumidityCollectInterval = 10000; // 温湿度采集间隔，默认10秒
+unsigned long flameDetectInterval = 5000; // 火焰检测间隔，默认5秒
 
 // ==================== 全局变量 ====================
 WiFiClient wifiClient;
@@ -367,7 +370,7 @@ void handleConfigUpdate(String message) {
     Serial.print("收到配置更新: ");
     Serial.println(message);
     
-    // 处理数据采集间隔配置
+    // 处理各种采集间隔配置
     if (doc.containsKey("data.collect.interval")) {
         int intervalSeconds = doc["data.collect.interval"];
         reportInterval = intervalSeconds * 1000; // 转换为毫秒
@@ -376,6 +379,39 @@ void handleConfigUpdate(String message) {
         Serial.print(intervalSeconds);
         Serial.print("秒 (");
         Serial.print(reportInterval);
+        Serial.println("毫秒)");
+    }
+    
+    if (doc.containsKey("light.collect.interval")) {
+        int intervalSeconds = doc["light.collect.interval"];
+        lightCollectInterval = intervalSeconds * 1000; // 转换为毫秒
+        
+        Serial.print("更新光照采集间隔: ");
+        Serial.print(intervalSeconds);
+        Serial.print("秒 (");
+        Serial.print(lightCollectInterval);
+        Serial.println("毫秒)");
+    }
+    
+    if (doc.containsKey("temp.humidity.collect.interval")) {
+        int intervalSeconds = doc["temp.humidity.collect.interval"];
+        tempHumidityCollectInterval = intervalSeconds * 1000; // 转换为毫秒
+        
+        Serial.print("更新温湿度采集间隔: ");
+        Serial.print(intervalSeconds);
+        Serial.print("秒 (");
+        Serial.print(tempHumidityCollectInterval);
+        Serial.println("毫秒)");
+    }
+    
+    if (doc.containsKey("flame.detect.interval")) {
+        int intervalSeconds = doc["flame.detect.interval"];
+        flameDetectInterval = intervalSeconds * 1000; // 转换为毫秒
+        
+        Serial.print("更新火焰检测间隔: ");
+        Serial.print(intervalSeconds);
+        Serial.print("秒 (");
+        Serial.print(flameDetectInterval);
         Serial.println("毫秒)");
     }
     
