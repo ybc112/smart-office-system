@@ -222,7 +222,11 @@ const loadConfig = async () => {
         if (key === 'mqtt.client.id') systemForm.mqttClientId = value
         if (key === 'alarm.email.enable') systemForm.emailAlarm = value === 'true'
         if (key === 'alarm.sms.enable') systemForm.smsAlarm = value === 'true'
-        if (key === 'light.collect.interval') systemForm.lightCollectInterval = Number(value)
+        // 优先使用 data.collect.interval，如果没有则使用 light.collect.interval
+        if (key === 'data.collect.interval') systemForm.lightCollectInterval = Number(value)
+        if (key === 'light.collect.interval' && !configList.value.find(c => c.configKey === 'data.collect.interval')) {
+          systemForm.lightCollectInterval = Number(value)
+        }
         if (key === 'temp.humidity.collect.interval') systemForm.tempHumidityCollectInterval = Number(value)
         if (key === 'flame.detect.interval') systemForm.flameDetectInterval = Number(value)
         if (key === 'data.retention.days') systemForm.dataRetentionDays = Number(value)
@@ -268,7 +272,9 @@ const saveConfig = async () => {
         { configKey: 'light.collect.interval', configValue: String(systemForm.lightCollectInterval), configType: 'SYSTEM' },
         { configKey: 'temp.humidity.collect.interval', configValue: String(systemForm.tempHumidityCollectInterval), configType: 'SYSTEM' },
         { configKey: 'flame.detect.interval', configValue: String(systemForm.flameDetectInterval), configType: 'SYSTEM' },
-        { configKey: 'data.retention.days', configValue: String(systemForm.dataRetentionDays), configType: 'SYSTEM' }
+        { configKey: 'data.retention.days', configValue: String(systemForm.dataRetentionDays), configType: 'SYSTEM' },
+        // 数据采集间隔：硬件端实际使用的配置，使用光照采集间隔的值
+        { configKey: 'data.collect.interval', configValue: String(systemForm.lightCollectInterval), configType: 'SYSTEM' }
       )
     }
 

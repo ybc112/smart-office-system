@@ -102,8 +102,9 @@ public class SystemConfigController {
 
                 log.info("更新配置: {}={}", config.getConfigKey(), config.getConfigValue());
                 
-                // 只有火焰检测间隔需要真正推送到硬件设备，其他采集间隔只是保存到数据库
-                if (config.getConfigKey().equals("flame.detect.interval")) {
+                // 推送采集间隔配置到硬件设备（包括火焰检测间隔和数据采集间隔）
+                if (config.getConfigKey().equals("flame.detect.interval") || 
+                    config.getConfigKey().equals("data.collect.interval")) {
                     pushConfigToDevices(config.getConfigKey(), config.getConfigValue());
                 }
                 
@@ -123,8 +124,9 @@ public class SystemConfigController {
                 
                 log.info("创建新配置: {}={}", newConfig.getConfigKey(), newConfig.getConfigValue());
                 
-                // 只有火焰检测间隔需要真正推送到硬件设备，其他采集间隔只是保存到数据库
-                if (newConfig.getConfigKey().equals("flame.detect.interval")) {
+                // 推送采集间隔配置到硬件设备（包括火焰检测间隔和数据采集间隔）
+                if (newConfig.getConfigKey().equals("flame.detect.interval") || 
+                    newConfig.getConfigKey().equals("data.collect.interval")) {
                     pushConfigToDevices(newConfig.getConfigKey(), newConfig.getConfigValue());
                 }
                 
@@ -144,6 +146,7 @@ public class SystemConfigController {
         descriptions.put("light.collect.interval", "光照采集间隔（秒）");
         descriptions.put("temp.humidity.collect.interval", "温湿度采集间隔（秒）");
         descriptions.put("flame.detect.interval", "火焰检测间隔（秒）");
+        descriptions.put("data.collect.interval", "数据采集间隔（秒）");
         descriptions.put("data.retention.days", "数据保留天数");
         descriptions.put("mqtt.broker.url", "MQTT服务器地址");
         descriptions.put("mqtt.client.id", "MQTT客户端ID");
