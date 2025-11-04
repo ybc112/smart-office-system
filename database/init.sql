@@ -151,7 +151,9 @@ VALUES
 ('mqtt.client.id', 'smart-office-server', 'SYSTEM', 'MQTT客户端ID'),
 ('alarm.email.enable', 'false', 'SYSTEM', '邮件告警开关'),
 ('alarm.sms.enable', 'false', 'SYSTEM', '短信告警开关'),
-('data.collect.interval', '5', 'SYSTEM', '数据采集间隔（秒）'),
+('light.collect.interval', '10', 'SYSTEM', '光照采集间隔（秒）'),
+('temp.humidity.collect.interval', '10', 'SYSTEM', '温湿度采集间隔（秒）'),
+('flame.detect.interval', '5', 'SYSTEM', '火焰检测间隔（秒）'),
 ('data.retention.days', '30', 'SYSTEM', '数据保留天数');
 
 -- ====================================

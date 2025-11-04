@@ -76,7 +76,6 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="location" label="位置" width="150" />
         <el-table-column label="办公室" width="120">
           <template #default="{ row }">
             {{ getOfficeName(row.officeId) }}
@@ -415,21 +414,28 @@ const filterDevices = () => {
 
 // 获取办公室名称
 const getOfficeName = (officeId) => {
-  const office = offices.value.find(o => o.id === officeId)
+  if (!officeId) return '-'
+  // 将ID转换为字符串进行比较，确保类型匹配
+  const office = offices.value.find(o => String(o.id) === String(officeId))
   return office ? office.officeName : '-'
 }
 
 // 获取办公区名称
 const getWorkAreaName = (workAreaId) => {
   if (!workAreaId) return '-'
+  
+  // 将ID转换为字符串进行比较，确保类型匹配
+  const idStr = String(workAreaId)
+  
   // 优先从所有办公区数据中查找
-  const workArea = allWorkAreas.value.find(w => w.id === workAreaId)
+  const workArea = allWorkAreas.value.find(w => String(w.id) === idStr)
   if (workArea) {
     return workArea.areaName
   }
+  
   // 如果没找到，再从筛选器和表单的办公区中查找
   const allLocalWorkAreas = [...workAreas.value, ...formWorkAreas.value]
-  const localWorkArea = allLocalWorkAreas.find(w => w.id === workAreaId)
+  const localWorkArea = allLocalWorkAreas.find(w => String(w.id) === idStr)
   return localWorkArea ? localWorkArea.areaName : '-'
 }
 
@@ -654,10 +660,14 @@ const getActionText = (action) => {
   return textMap[action] || action
 }
 
-onMounted(() => {
+onMounted(async () => {
+  // 先加载基础数据（办公室和办公区）
+  await Promise.all([
+    loadOffices(),
+    loadAllWorkAreas()
+  ])
+  // 然后加载设备列表
   loadDevices()
-  loadOffices()
-  loadAllWorkAreas() // 加载所有办公区数据
 })
 </script>
 

@@ -87,6 +87,7 @@ public class SystemConfigController {
             );
 
             if (config != null) {
+                // 配置项存在，更新值
                 config.setConfigValue(configParam.getConfigValue());
                 systemConfigMapper.updateById(config);
 
@@ -101,19 +102,60 @@ public class SystemConfigController {
 
                 log.info("更新配置: {}={}", config.getConfigKey(), config.getConfigValue());
                 
-                // 如果是采集间隔配置，推送到硬件设备
-                if (config.getConfigKey().contains("collect.interval") || config.getConfigKey().contains("detect.interval")) {
+                // 只有火焰检测间隔需要真正推送到硬件设备，其他采集间隔只是保存到数据库
+                if (config.getConfigKey().equals("flame.detect.interval")) {
                     pushConfigToDevices(config.getConfigKey(), config.getConfigValue());
                 }
                 
                 return Result.success("配置已更新");
             } else {
-                return Result.fail("配置项不存在");
+                // 配置项不存在，自动创建
+                SystemConfig newConfig = new SystemConfig();
+                newConfig.setConfigKey(configParam.getConfigKey());
+                newConfig.setConfigValue(configParam.getConfigValue());
+                newConfig.setConfigType(configParam.getConfigType() != null ? configParam.getConfigType() : "SYSTEM");
+                
+                // 根据配置键设置默认描述
+                String description = getDefaultDescription(configParam.getConfigKey());
+                newConfig.setDescription(description != null ? description : "系统配置");
+                
+                systemConfigMapper.insert(newConfig);
+                
+                log.info("创建新配置: {}={}", newConfig.getConfigKey(), newConfig.getConfigValue());
+                
+                // 只有火焰检测间隔需要真正推送到硬件设备，其他采集间隔只是保存到数据库
+                if (newConfig.getConfigKey().equals("flame.detect.interval")) {
+                    pushConfigToDevices(newConfig.getConfigKey(), newConfig.getConfigValue());
+                }
+                
+                return Result.success("配置已创建");
             }
         } catch (Exception e) {
             log.error("更新配置失败", e);
-            return Result.fail("更新配置失败");
+            return Result.fail("更新配置失败: " + e.getMessage());
         }
+    }
+
+    /**
+     * 获取配置项的默认描述
+     */
+    private String getDefaultDescription(String configKey) {
+        Map<String, String> descriptions = new HashMap<>();
+        descriptions.put("light.collect.interval", "光照采集间隔（秒）");
+        descriptions.put("temp.humidity.collect.interval", "温湿度采集间隔（秒）");
+        descriptions.put("flame.detect.interval", "火焰检测间隔（秒）");
+        descriptions.put("data.retention.days", "数据保留天数");
+        descriptions.put("mqtt.broker.url", "MQTT服务器地址");
+        descriptions.put("mqtt.client.id", "MQTT客户端ID");
+        descriptions.put("alarm.email.enable", "邮件告警开关");
+        descriptions.put("alarm.sms.enable", "短信告警开关");
+        descriptions.put("light.threshold.low", "光照阈值下限（低于此值开灯）");
+        descriptions.put("light.threshold.high", "光照阈值上限（高于此值关灯）");
+        descriptions.put("temperature.threshold.low", "温度阈值下限");
+        descriptions.put("temperature.threshold.high", "温度阈值上限");
+        descriptions.put("humidity.threshold.low", "湿度阈值下限");
+        descriptions.put("humidity.threshold.high", "湿度阈值上限");
+        return descriptions.get(configKey);
     }
 
     /**

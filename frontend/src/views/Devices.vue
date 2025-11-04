@@ -45,8 +45,11 @@
                 @change="filterDevices"
                 style="width: 120px; margin-right: 10px;"
               >
+                <el-option label="空调" value="AIR_CONDITIONER" />
+                <el-option label="加湿器" value="HUMIDIFIER" />
+                <el-option label="灯光" value="LIGHT" />
                 <el-option label="传感器" value="SENSOR" />
-                <el-option label="执行器" value="ACTUATOR" />
+                <el-option label="其他" value="OTHER" />
               </el-select>
             </div>
             
@@ -83,13 +86,17 @@
           <div class="device-details">
             <div class="detail-item">
               <span class="label">类型:</span>
-              <el-tag :type="device.deviceType === 'SENSOR' ? 'success' : 'warning'" size="small">
-                {{ device.deviceType === 'SENSOR' ? '传感器' : '执行器' }}
+              <el-tag :type="getDeviceTypeTag(device.deviceType)" size="small">
+                {{ getDeviceTypeText(device.deviceType) }}
               </el-tag>
             </div>
             <div class="detail-item">
-              <span class="label">位置:</span>
-              <span class="value">{{ device.location }}</span>
+              <span class="label">办公室:</span>
+              <span class="value">{{ getOfficeName(device.officeId) }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="label">办公区:</span>
+              <span class="value">{{ getWorkAreaName(device.workAreaId) }}</span>
             </div>
             <div class="detail-item">
               <span class="label">最后在线:</span>
@@ -113,12 +120,21 @@
         <el-table-column prop="deviceName" label="设备名称" width="180" />
         <el-table-column prop="deviceType" label="设备类型" width="120">
           <template #default="{ row }">
-            <el-tag :type="row.deviceType === 'SENSOR' ? 'success' : 'warning'" size="small">
-              {{ row.deviceType === '传感器' ? '传感器' : '执行器' }}
+            <el-tag :type="getDeviceTypeTag(row.deviceType)" size="small">
+              {{ getDeviceTypeText(row.deviceType) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="location" label="位置" width="150" />
+        <el-table-column label="办公室" width="120">
+          <template #default="{ row }">
+            {{ getOfficeName(row.officeId) }}
+          </template>
+        </el-table-column>
+        <el-table-column label="办公区" width="120">
+          <template #default="{ row }">
+            {{ getWorkAreaName(row.workAreaId) }}
+          </template>
+        </el-table-column>
         <el-table-column prop="status" label="状态" width="100">
           <template #default="{ row }">
             <el-tag
@@ -164,10 +180,15 @@
             {{ selectedDevice.deviceName }}
           </el-descriptions-item>
           <el-descriptions-item label="设备类型">
-            {{ selectedDevice.deviceType }}
+            <el-tag :type="getDeviceTypeTag(selectedDevice.deviceType)" size="small">
+              {{ getDeviceTypeText(selectedDevice.deviceType) }}
+            </el-tag>
           </el-descriptions-item>
-          <el-descriptions-item label="位置">
-            {{ selectedDevice.location }}
+          <el-descriptions-item label="办公室">
+            {{ getOfficeName(selectedDevice.officeId) }}
+          </el-descriptions-item>
+          <el-descriptions-item label="办公区">
+            {{ getWorkAreaName(selectedDevice.workAreaId) }}
           </el-descriptions-item>
           <el-descriptions-item label="状态">
             <el-tag :type="selectedDevice.status === 'ONLINE' ? 'success' : 'info'">
@@ -300,6 +321,7 @@ const allDevices = ref([]) // 存储所有设备数据
 // 筛选相关
 const offices = ref([])
 const workAreas = ref([])
+const allWorkAreas = ref([]) // 存储所有办公区数据，用于显示设备列表中的办公区名称
 const selectedOfficeId = ref(null)
 const selectedWorkAreaId = ref(null)
 const selectedDeviceType = ref(null)
@@ -372,6 +394,19 @@ const loadWorkAreas = async (officeId) => {
   }
 }
 
+// 加载所有办公区数据（用于显示设备列表中的办公区名称）
+const loadAllWorkAreas = async () => {
+  try {
+    const response = await axios.get('/api/office/work-areas/list')
+    if (response.data.code === 200) {
+      allWorkAreas.value = response.data.data || []
+    }
+  } catch (error) {
+    console.error('加载所有办公区列表失败:', error)
+    allWorkAreas.value = []
+  }
+}
+
 // 办公室选择变化
 const onOfficeChange = (officeId) => {
   selectedWorkAreaId.value = null
@@ -407,6 +442,32 @@ const filterDevices = () => {
   }
   
   deviceList.value = filtered
+}
+
+// 获取办公室名称
+const getOfficeName = (officeId) => {
+  if (!officeId) return '-'
+  // 将ID转换为字符串进行比较，确保类型匹配
+  const office = offices.value.find(o => String(o.id) === String(officeId))
+  return office ? office.officeName : '-'
+}
+
+// 获取办公区名称
+const getWorkAreaName = (workAreaId) => {
+  if (!workAreaId) return '-'
+  
+  // 将ID转换为字符串进行比较，确保类型匹配
+  const idStr = String(workAreaId)
+  
+  // 优先从所有办公区数据中查找
+  const workArea = allWorkAreas.value.find(w => String(w.id) === idStr)
+  if (workArea) {
+    return workArea.areaName
+  }
+  
+  // 如果没找到，再从筛选器的办公区中查找
+  const localWorkArea = workAreas.value.find(w => String(w.id) === idStr)
+  return localWorkArea ? localWorkArea.areaName : '-'
 }
 
 // 刷新设备列表
@@ -506,9 +567,38 @@ const getStatusText = (status) => {
   return statusMap[status] || status
 }
 
-onMounted(() => {
+// 获取设备类型标签
+const getDeviceTypeTag = (type) => {
+  const tagMap = {
+    'AIR_CONDITIONER': 'primary',
+    'HUMIDIFIER': 'success',
+    'LIGHT': 'warning',
+    'SENSOR': 'info',
+    'OTHER': ''
+  }
+  return tagMap[type] || ''
+}
+
+// 获取设备类型文本
+const getDeviceTypeText = (type) => {
+  const textMap = {
+    'AIR_CONDITIONER': '空调',
+    'HUMIDIFIER': '加湿器',
+    'LIGHT': '灯光',
+    'SENSOR': '传感器',
+    'OTHER': '其他'
+  }
+  return textMap[type] || type
+}
+
+onMounted(async () => {
+  // 先加载基础数据（办公室和办公区）
+  await Promise.all([
+    loadOffices(),
+    loadAllWorkAreas()
+  ])
+  // 然后加载设备列表
   loadDevices()
-  loadOffices()
   checkMobile()
   window.addEventListener('resize', handleResize)
 })
