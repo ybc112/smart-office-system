@@ -172,7 +172,20 @@
     <!-- 疏散图对话框 -->
     <el-dialog v-model="evacuationMapVisible" title="消防疏散图" width="80%" center>
       <div class="evacuation-map">
-        <img src="/evacuation-map.png" alt="消防疏散图" style="width: 100%; height: auto;" />
+        <div v-if="imageLoadError" class="error-message">
+          <el-icon><WarningFilled /></el-icon>
+          <p>图片加载失败</p>
+          <p class="error-path">路径: {{ evacuationMapUrl }}</p>
+          <p class="error-hint">请确保图片文件位于: frontend/public/images/image.png</p>
+        </div>
+        <img
+          v-else
+          :src="evacuationMapUrl"
+          alt="消防疏散图"
+          style="width: 100%; height: auto; display: block; margin: 0 auto;"
+          @error="onEvacuationMapError"
+          @load="onEvacuationMapLoad"
+        />
       </div>
     </el-dialog>
   </div>
@@ -180,6 +193,7 @@
 
 <script>
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { WarningFilled } from '@element-plus/icons-vue'
 import { getLocationOptions } from '@/api/location'
 import { 
   getFireHoses, 
@@ -194,6 +208,9 @@ import {
 
 export default {
   name: 'FireSafety',
+  components: {
+    WarningFilled
+  },
   data() {
     return {
       // 位置选项
@@ -234,13 +251,17 @@ export default {
       },
 
       // 疏散图
-      evacuationMapVisible: false
+      evacuationMapVisible: false,
+      evacuationMapUrl: '',
+      imageLoadError: false
     }
   },
   mounted() {
     this.loadLocationOptions()
     this.loadFireHoses()
     this.loadFireExtinguishers()
+    // 计算疏散图地址（支持自定义路径与默认回退）
+    this.initEvacuationMapUrl()
   },
   methods: {
     // ==================== 位置管理 ====================
@@ -427,7 +448,97 @@ export default {
       return new Date(dateTime).toLocaleString('zh-CN')
     },
 
+    // 计算疏散图图片地址。优先使用 VITE_EVACUATION_MAP，其次使用默认图
+    computeEvacuationMapUrl() {
+      const base = import.meta.env.BASE_URL || '/'
+      // 允许用户通过 .env(.local) 设置 VITE_EVACUATION_MAP，如 /images/image.png 或 http(s)://...
+      let custom = import.meta.env.VITE_EVACUATION_MAP || ''
+      if (custom) {
+        // 将 Windows 路径分隔符转换成 URL 分隔符
+        custom = String(custom).replace(/\\/g, '/')
+      }
+
+      // 如果是完整的绝对 URL，直接返回
+      const isAbsoluteUrl = /^(https?:)?\/\//i.test(custom)
+      if (custom && isAbsoluteUrl) return custom
+
+      // 相对路径与 base 拼接；没有自定义则使用默认图 /images/image.png
+      const path = custom && custom.trim() ? custom : '/images/image.png'
+      return this.joinWithBase(base, path)
+    },
+
+    // 尝试多个可能的图片路径
+    async tryLoadImage() {
+      const possiblePaths = [
+        '/images/image.png',
+        '/evacuation-map.png'
+      ]
+      
+      for (const imgPath of possiblePaths) {
+        const base = import.meta.env.BASE_URL || '/'
+        const fullPath = this.joinWithBase(base, imgPath)
+        
+        // 尝试加载图片
+        try {
+          const img = new Image()
+          await new Promise((resolve, reject) => {
+            img.onload = resolve
+            img.onerror = reject
+            img.src = fullPath
+          })
+          // 如果加载成功，返回这个路径
+          return fullPath
+        } catch (e) {
+          // 继续尝试下一个路径
+          continue
+        }
+      }
+      
+      // 如果所有路径都失败，返回默认路径
+      const base = import.meta.env.BASE_URL || '/'
+      return this.joinWithBase(base, '/images/image.png')
+    },
+
+    // 与 base 路径安全拼接
+    joinWithBase(base, path) {
+      const b = (base || '/').replace(/\/?$/, '/')
+      const p = String(path || '').replace(/\\/g, '/').replace(/^\/+/, '')
+      return b + p
+    },
+
+    // 初始化疏散图URL，尝试多个路径
+    async initEvacuationMapUrl() {
+      this.evacuationMapUrl = this.computeEvacuationMapUrl()
+      // 如果设置了环境变量，直接使用
+      if (import.meta.env.VITE_EVACUATION_MAP) {
+        return
+      }
+      // 否则尝试加载图片找到可用的路径
+      try {
+        const workingPath = await this.tryLoadImage()
+        this.evacuationMapUrl = workingPath
+      } catch (e) {
+        console.warn('无法自动检测图片路径，使用默认路径')
+      }
+    },
+
+    // 图片加载失败时显示错误提示
+    onEvacuationMapError(event) {
+      console.error('疏散图加载失败:', this.evacuationMapUrl)
+      this.imageLoadError = true
+      ElMessage.error('疏散图加载失败，请检查图片文件是否存在：' + this.evacuationMapUrl)
+    },
+
+    // 图片加载成功时重置错误状态
+    onEvacuationMapLoad() {
+      this.imageLoadError = false
+    },
+
     showEvacuationMap() {
+      // 重置错误状态
+      this.imageLoadError = false
+      // 重新计算图片路径（以防环境变量更新）
+      this.evacuationMapUrl = this.computeEvacuationMapUrl()
       this.evacuationMapVisible = true
     }
   }
@@ -484,5 +595,34 @@ export default {
   max-width: 100%;
   border-radius: 8px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.error-message {
+  padding: 40px 20px;
+  text-align: center;
+  color: #f56c6c;
+}
+
+.error-message .el-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.error-message p {
+  margin: 8px 0;
+  font-size: 16px;
+}
+
+.error-message .error-path {
+  font-family: monospace;
+  font-size: 14px;
+  color: #909399;
+  word-break: break-all;
+}
+
+.error-message .error-hint {
+  font-size: 14px;
+  color: #606266;
+  margin-top: 16px;
 }
 </style>

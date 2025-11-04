@@ -312,9 +312,10 @@ export default {
       try {
         await workAreaFormRef.value.validate()
         
-        const workAreaData = {
-          ...workAreaForm,
-          officeId: selectedOfficeId.value
+        // 确保 officeId 存在
+        if (!workAreaForm.officeId) {
+          ElMessage.error('请选择办公室')
+          return
         }
         
         const url = isEditingWorkArea.value 
@@ -323,7 +324,7 @@ export default {
         
         const method = isEditingWorkArea.value ? 'put' : 'post'
         
-        const response = await axios[method](url, workAreaData)
+        const response = await axios[method](url, workAreaForm)
         
         if (response.data.code === 200) {
           ElMessage.success(response.data.message || '保存成功')

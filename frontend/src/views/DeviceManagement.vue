@@ -282,6 +282,7 @@ const loading = ref(false)
 const offices = ref([])
 const workAreas = ref([])
 const formWorkAreas = ref([])
+const allWorkAreas = ref([]) // 存储所有办公区数据，用于显示设备列表中的办公区名称
 const selectedOfficeId = ref('')
 const selectedWorkAreaId = ref('')
 const selectedDeviceType = ref('')
@@ -360,7 +361,7 @@ const loadOffices = async () => {
   }
 }
 
-// 加载办公区列表
+// 加载办公区列表（根据办公室ID）
 const loadWorkAreas = async (officeId) => {
   try {
     const response = await axios.get(`/api/office/${officeId}/work-areas`)
@@ -370,6 +371,19 @@ const loadWorkAreas = async (officeId) => {
   } catch (error) {
     console.error('加载办公区列表失败:', error)
     return []
+  }
+}
+
+// 加载所有办公区数据（用于显示设备列表中的办公区名称）
+const loadAllWorkAreas = async () => {
+  try {
+    const response = await axios.get('/api/office/work-areas/list')
+    if (response.data.code === 200) {
+      allWorkAreas.value = response.data.data || []
+    }
+  } catch (error) {
+    console.error('加载所有办公区列表失败:', error)
+    allWorkAreas.value = []
   }
 }
 
@@ -407,9 +421,16 @@ const getOfficeName = (officeId) => {
 
 // 获取办公区名称
 const getWorkAreaName = (workAreaId) => {
-  const allWorkAreas = [...workAreas.value, ...formWorkAreas.value]
-  const workArea = allWorkAreas.find(w => w.id === workAreaId)
-  return workArea ? workArea.areaName : '-'
+  if (!workAreaId) return '-'
+  // 优先从所有办公区数据中查找
+  const workArea = allWorkAreas.value.find(w => w.id === workAreaId)
+  if (workArea) {
+    return workArea.areaName
+  }
+  // 如果没找到，再从筛选器和表单的办公区中查找
+  const allLocalWorkAreas = [...workAreas.value, ...formWorkAreas.value]
+  const localWorkArea = allLocalWorkAreas.find(w => w.id === workAreaId)
+  return localWorkArea ? localWorkArea.areaName : '-'
 }
 
 // 加载设备列表
@@ -433,6 +454,7 @@ const loadDevices = async () => {
 // 刷新设备列表
 const refreshDevices = () => {
   loadDevices()
+  loadAllWorkAreas() // 同时刷新办公区数据
   ElMessage.success('刷新成功')
 }
 
@@ -635,6 +657,7 @@ const getActionText = (action) => {
 onMounted(() => {
   loadDevices()
   loadOffices()
+  loadAllWorkAreas() // 加载所有办公区数据
 })
 </script>
 
